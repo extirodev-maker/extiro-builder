@@ -1,5 +1,5 @@
 name: relaxing_fuljhadiya
-description: A relaxing app with automatic fireworks and sparkling lights.
+description: A relaxing app with automatic fireworks and glowing sparklers.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,11 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  canvas_animated_loading_dots: ^1.0.8
+  flutter_lucide: ^0.2.0
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true

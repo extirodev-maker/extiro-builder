@@ -1,20 +1,22 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 
 void main() {
   runApp(const RelaxingFuljhadiyaApp());
 }
 
 class RelaxingFuljhadiyaApp extends StatelessWidget {
-  const RelaxingFuljhadiyaApp({Key? key}) : super(key: key);
+  const RelaxingFuljhadiyaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Relaxing Fuljhadiya',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF050515),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.amber,
       ),
       home: const FireworksScreen(),
     );
@@ -22,64 +24,35 @@ class RelaxingFuljhadiyaApp extends StatelessWidget {
 }
 
 class FireworksScreen extends StatefulWidget {
-  const FireworksScreen({Key? key}) : super(key: key);
+  const FireworksScreen({super.key});
 
   @override
   State<FireworksScreen> createState() => _FireworksScreenState();
 }
 
-class _FireworksScreenState extends State<FireworksScreen>
-    with TickerProviderStateMixin {
+class _FireworksScreenState extends State<FireworksScreen> with TickerProviderStateMixin {
   late AnimationController _controller;
   final List<Firework> _fireworks = [];
+  final List<Particle> _particles = [];
   final Random _random = Random();
-  bool _isAmbientSoundOn = true;
+
+  bool _isAutoSparks = true;
+  double _intensity = 1.0;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(seconds: 10),
     )..repeat();
 
-    _controller.addListener(_updateFireworks);
-    
-    // Add initial fireworks
-    for (int i = 0; i < 3; i++) {
-      _spawnFirework();
-    }
-  }
+    _controller.addListener(_updateSimulation);
 
-  void _spawnFirework() {
-    final size = MediaQuery.of(context).size;
-    if (size.width == 0) return;
-    
-    _fireworks.add(
-      Firework(
-        x: _random.nextDouble() * (size.width - 100) + 50,
-        y: _random.nextDouble() * (size.height * 0.6) + 100,
-        color: HSLColor.fromAHSL(
-          1.0,
-          _random.nextDouble() * 360,
-          0.8,
-          0.7,
-        ).toColor(),
-      ),
-    );
-  }
-
-  void _updateFireworks() {
-    setState(() {
-      for (var f in _fireworks) {
-        f.update();
-      }
-      _fireworks.removeWhere((f) => f.isFinished);
-
-      // Automatically spawn new fuljhadis to keep it magical and relaxing
-      if (_random.nextDouble() < 0.08 && _fireworks.length < 8) {
-        _spawnFirework();
-      }
+    // Initial sparks
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _launchRandomFirework();
+      _launchRandomFirework();
     });
   }
 
@@ -87,198 +60,311 @@ class _FireworksScreenState extends State<FireworksScreen>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  } 
+
+  void _updateSimulation() {
+    setState(() {
+      if (_isAutoSparks && _random.nextDouble() < (0.05 * _intensity)) {
+        _launchRandomFirework();
+      }
+
+      // Update particles
+      for (int i = _particles.length - 1; i >= 0; i--) {
+        var p = _particles[i];
+        p.update();
+        if (p.isDead) {
+          _particles.removeAt(i);
+        }
+      }
+
+      // Update fireworks
+      for (int i = _fireworks.length - 1; i >= 0; i--) {
+        var f = _fireworks[i];
+        f.update();
+        if (f.isExploded && f.sparks.isEmpty) {
+          _fireworks.removeAt(i);
+        }
+      }
+    });
+  }
+
+  void _launchRandomFirework() {
+    final size = MediaQuery.of(context).size;
+    if (size.width == 0 || size.height == 0) return;
+
+    final startX = _random.nextDouble() * size.width;
+    final startY = size.height;
+    final targetX = 50.0 + _random.nextDouble() * (size.width - 100);
+    final targetY = 100.0 + _random.nextDouble() * (size.height * 0.5);
+
+    final color = HSVColor.fromAHSV(1.0, _random.nextDouble() * 360, 0.8, 1.0).toColor();
+
+    setState(() {
+      _fireworks.add(Firework(
+        startX: startX,
+        startY: startY,
+        targetX: targetX,
+        targetY: targetY,
+        color: color,
+        onExplode: (x, y, col) {
+          _createExplosion(x, y, col);
+        },
+      ));
+    });
+  }
+
+  void _createExplosion(double x, double y, Color color) {
+    final count = (40 + _random.nextInt(30)).toDouble();
+    for (int i = 0; i < count; i++) {
+      final angle = _random.nextDouble() * 2 * pi;
+      final speed = 1.0 + _random.nextDouble() * 5.0;
+      _particles.add(Particle(
+        x: x,
+        y: y,
+        vx: cos(angle) * speed,
+        vy: sin(angle) * speed,
+        color: color,
+        size: 2.0 + _random.nextDouble() * 3.0,
+        life: 1.0,
+        decay: 0.01 + _random.nextDouble() * 0.02,
+      ));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      body: GestureDetector(
-        onTapDown: (details) {
-          // Tap anywhere to burst a new fuljhadi instantly!
-          setState(() {
-            _fireworks.add(
-              Firework(
-                x: details.localPosition.dx,
-                y: details.localPosition.dy,
-                color: HSLColor.fromAHSL(
-                  1.0,
-                  _random.nextDouble() * 360,
-                  0.9,
-                  0.6,
-                ).toColor(),
-              ),
-            );
-          });
-        },
-        child: Stack(
-          children: [
-            // Background gradient for relaxing night feel
-            Container(
+      backgroundColor: const Color(0xFF050515),
+      body: Stack(
+        children: [
+          // Background ambient gradient for relaxing feel
+          Positioned.fill(
+            child: Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                gradient: RadialGradient(
+                  center: Alignment(0, -0.3),
+                  radius: 1.2,
                   colors: [
-                    Color(0xFF020208),
-                    Color(0xFF0B0B2E),
-                    Color(0xFF150A21),
-                  ],
-                ),
-              ),
-            },
-
-            // Custom Painter for Glowing Fuljhadiya Sparkles
-            CustomPaint(
-              size: size,
-              painter: FireworkPainter(_fireworks),
-            ),
-
-            // Relaxing Title & Instructions
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '✨ Relaxing Fuljhadiya ✨',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _isAmbientSoundOn
-                          = 'Tap anywhere or watch them automatically sparkle',
-                      style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 13,
-                      ),
-                    ),
+                    Color(0xFF151030),
+                    Color(0xFF050510),
+                    Color(0xFF020205),
                   ],
                 ),
               ),
             ),
+          ),
 
-            // Bottom controls / info
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+          // Custom Painter for Fuljhadiya & Fireworks
+          Positioned.fill(
+            child: GestureDetector(
+              onTapDown: (details) {
+                _createExplosion(
+                  details.localPosition.dx,
+                  details.localPosition.dy,
+                  HSVColor.fromAHSV(1.0, _random.nextDouble() * 360, 0.7, 1.0).toColor(),
+                );
+              },
+              child: CustomPaint(
+                painter: FireworkPainter(fireworks: _fireworks, particles: _particles),
+              ),
+            ),
+          ),
+
+          // Top Bar with App Title
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.nightlight_round, color: Colors.amberAccent, size: 18),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Peaceful Glow Mode',
-                        style: TextStyle(color: Colors.white60, fontSize: 13),
+                      Text(
+                        '✨ Relaxing Fuljhadiya ✨',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amberAccent,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Tap anywhere or watch auto sparks',
+                        style: TextStyle(fontSize: 12, color: Colors.white60),
                       ),
                     ],
                   ),
+                  IconButton(
+                    icon: Icon(
+                      _isAutoSparks ? LucideIcons.volume_2 : LucideIcons.volume_x,
+                      color: Colors.amberAccent,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isAutoSparks = !_isAutoSparks;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Bottom Control Panel
+          Positioned(
+            bottom: 30,
+            left: 20,
+            right: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                color: Colors.white.withOpacity(0.08),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.sparkles, color: Colors.amberAccent, size: 20),
+                    const SizedBox(width: 12),
+                    const Text('Intensity', style: TextStyle(color: Colors.white70)),
+                    Expanded(
+                      child: Slider(
+                        value: _intensity,
+                        min: 0.2,
+                        max: 2.5,
+                        activeColor: Colors.amberAccent,
+                        inactiveColor: Colors.white24,
+                        onChanged: (val) {
+                          setState(() {
+                            _intensity = val;
+                          });
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amberAccent,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _launchRandomFirework,
+                      child: const Text('Burst'),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class Firework {
-  final double x;
-  final double y;
-  final Color color;
-  final List<Particle> particles = [];
-  double progress = 0.0;
-  bool isFinished = false;
+  double startX, startY;
+  double targetX, targetY;
+  double currentX, currentY;
+  Color color;
+  bool isExploded = false;
+  List<Spark> sparks = [];
+  
+  final Function(double, double, Color) onExplode;
 
-  Firework({required this.x, required this.y, required this.color}) {
-    final Random rand = Random();
-    // Generate spark particle streams
-    for (int i = 0; i < 50; i++) {
-      final angle = rand.nextDouble() * 2 * pi;
-      final speed = rand.nextDouble() * 4 + 1;
-      particles.add(
-        Particle(
-          angle: angle,
-          speed: speed,
-          size: rand.nextDouble() * 3 + 1,
-        ),
-      );
-    }
-  }
+  Firework({
+    required this.startX,
+    required this.startY,
+    required this.targetX,
+    required this.targetY,
+    required this.color,
+    required this.onExplode,
+  })  : currentX = startX,
+        currentY = startY;
 
   void update() {
-    progress += 0.015;
-    if (progress >= 1.0) {
-      isFinished = true;
-    }
-    for (var p in particles) {
-      p.update();
+    if (isExploded) return;
+
+    currentX += (targetX - currentX) * 0.1;
+    currentY += (targetY - currentY) * 0.1;
+
+    if ((currentY - targetY).abs() < 5.0) {
+      isExploded = true;
+      onExplode(targetX, targetY, color);
     }
   }
 }
 
+class Spark {
+  double x, y;
+  Color color;
+  Spark({required this.x, required this.y, required this.color});
+}
+
 class Particle {
-  double angle;
-  double speed;
+  double x, y;
+  double vx, vy;
+  Color color;
   double size;
-  double currentX = 0;
-  double currentY = 0;
-  double alpha = 1.0;
+  double life;
+  double decay;
 
   Particle({
-    required this.angle,
-    required this.speed,
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.color,
     required this.size,
+    required this.life,
+    required this.decay,
   });
 
+  bool get isDead => life <= 0;
+
   void update() {
-    currentX += cos(angle) * speed;
-    currentY += sin(angle) * speed + 0.3; // slight gravity
-    alpha -= 0.02;
-    if (alpha < 0) alpha = 0;
+    x += vx;
+    y += vy;
+    vy += 0.08; // gravity
+    vx *= 0.96; // friction
+    vy *= 0.96;
+    life -= decay;
   }
 }
 
 class FireworkPainter extends CustomPainter {
   final List<Firework> fireworks;
+  final List<Particle> particles;
 
-  FireworkPainter(this.fireworks);
+  FireworkPainter({required this.fireworks, required this.particles});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..style = PaintingStyle.fill;
+    final paint = Paint()..strokeCap = StrokeCap.round;
 
-    for (var firework in fireworks) {
-      for (var p in firework.particles) {
-        final x = firework.x + p.currentX;
-        final y = firework.y + p.currentY;
-
-        paint.color = firework.color.withOpacity(p.alpha.clamp(0.0, 1.0));
-        canvas.drawCircle(Offset(x, y), p.size, paint);
-
-        // Draw a soft glowing halo around sparkling particles
-        final glowPaint = Paint()
-          ..color = firework.color.withOpacity((p.alpha * 0.3).clamp(0.0, 1.0))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-        canvas.drawCircle(Offset(x, y), p.size * 1.8, glowPaint);
+    // Draw launching rockets
+    for (var f in fireworks) {
+      if (!f.isExploded) {
+        paint.color = f.color;
+        paint.strokeWidth = 3.0;
+        canvas.drawCircle(Offset(f.currentX, f.currentY), 3.0, paint);
+        
+        // Trail
+        paint.color = f.color.withOpacity(0.3);
+        canvas.drawLine(
+          Offset(f.startX, f.startY),
+          Offset(f.currentX, f.currentY),
+          paint,
+        );
       }
+    }
+
+    // Draw explosion particles
+    for (var p in particles) {
+      paint.color = p.color.withOpacity(p.life.clamp(0.0, 1.0));
+      paint.strokeWidth = p.size;
+      canvas.drawCircle(Offset(p.x, p.y), p.size, paint);
     }
   }
 
