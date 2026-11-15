@@ -5,6 +5,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      APP_NAME: "calculator"
+      APP_PKG: "com.extiro.calculator"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -15,12 +18,62 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: flutter create . --platforms=android --project-name extiro_app --org com.extiro
-      - name: Add INTERNET permission if missing
+      - name: Create android folder
+        run: |
+          NAME=$(grep -m1 '^name:' pubspec.yaml | awk '{print $2}')
+          flutter create . --platforms=android --project-name $NAME --org com.extiro
+      - name: Apply app name, package and permissions
+        run: |
+          G=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -1)
+          OLD=$(grep -m1 -oE 'namespace[ =]+"[^"]+"' $G | grep -oE '"[^"]+"' | tr -d '"')
+          [ -n "$OLD" ] || { echo "namespace not found in $G"; exit 1; }
+          echo "package: $OLD -> $APP_PKG"
+          sed -i "s/$OLD/$APP_PKG/g" $G
+          KT=$(find android/app/src/main -name 'MainActivity.*' | head -1)
+          ROOT=$(dirname $KT | sed -E 's#/(kotlin|java)/.*#/\1#')
+          sed -i "s/^package .*/package $APP_PKG/" $KT
+          NEWDIR=$ROOT/$(echo $APP_PKG | tr . /)
+          mkdir -p $NEWDIR
+          [ "$(dirname $KT)" = "$NEWDIR" ] || mv $KT $NEWDIR/
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i "s|android:label=\"[^\"]*\"|android:label=\"$APP_NAME\"|" $M
+      - name: Add permissions
         run: |
           M=android/app/src/main/AndroidManifest.xml
-          grep -q "android.permission.INTERNET" $M || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $M
+          add_perm() {
+            grep -q "android.permission.$1\"" $M || { echo "permission: $1"; sed -i "s|<application|<uses-permission android:name=\"android.permission.$1\"/>\n    <application|" $M; }
+          }
+          has() { grep -qE "^[[:space:]]+($1)[[:space:]]*:" pubspec.yaml; }
+          add_perm INTERNET
+          if has "connectivity_plus|network_info_plus"; then add_perm ACCESS_NETWORK_STATE; add_perm ACCESS_WIFI_STATE; fi
+          if has "geolocator|location"; then add_perm ACCESS_FINE_LOCATION; add_perm ACCESS_COARSE_LOCATION; fi
+          if has "camera|image_picker|mobile_scanner|qr_code_scanner|flutter_barcode_scanner"; then add_perm CAMERA; fi
+          if has "record|speech_to_text|flutter_sound|audio_waveforms|flutter_webrtc"; then add_perm RECORD_AUDIO; add_perm MODIFY_AUDIO_SETTINGS; fi
+          if has "flutter_local_notifications|awesome_notifications|firebase_messaging"; then add_perm POST_NOTIFICATIONS; add_perm VIBRATE; fi
+          if has "vibration|vibrate"; then add_perm VIBRATE; fi
+          if has "wakelock|wakelock_plus"; then add_perm WAKE_LOCK; fi
+          if has "flutter_foreground_task|flutter_background_service"; then add_perm FOREGROUND_SERVICE; add_perm WAKE_LOCK; fi
+          if has "local_auth"; then add_perm USE_BIOMETRIC; fi
+          if has "flutter_contacts|contacts_service|fast_contacts"; then add_perm READ_CONTACTS; fi
+          if has "flutter_phone_direct_caller"; then add_perm CALL_PHONE; fi
+          if has "flutter_blue_plus|flutter_blue|flutter_reactive_ble"; then add_perm BLUETOOTH; add_perm BLUETOOTH_ADMIN; add_perm BLUETOOTH_SCAN; add_perm BLUETOOTH_CONNECT; add_perm ACCESS_FINE_LOCATION; fi
+          if has "photo_manager|gallery_saver|saver_gallery|image_gallery_saver"; then add_perm READ_MEDIA_IMAGES; add_perm READ_MEDIA_VIDEO; add_perm READ_EXTERNAL_STORAGE; add_perm WRITE_EXTERNAL_STORAGE; fi
+          if [ -f android_permissions.txt ]; then
+            while read -r P; do
+              P=$(echo "$P" | tr -d '\r' | sed 's/^android\.permission\.//' | tr -cd 'A-Za-z0-9_')
+              [ -n "$P" ] && add_perm "$P"
+            done < android_permissions.txt || true
+          fi
+          echo "--- final permissions ---"
+          grep "uses-permission" $M || true
       - run: flutter pub get
+      - name: Launcher icon
+        run: |
+          if [ -f .extiro/logo.png ]; then
+            flutter pub add --dev flutter_launcher_icons
+            printf 'flutter_launcher_icons:\n  android: true\n  ios: false\n  image_path: ".extiro/logo.png"\n' > flutter_launcher_icons.yaml
+            dart run flutter_launcher_icons
+          fi
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
