@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      APP_NAME: "calendar"
-      APP_PKG: "com.extiro.calendar"
+      APP_NAME: "Calendar 3d"
+      APP_PKG: "com.extiro.calendar3d"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -74,8 +74,9 @@ jobs:
             printf 'flutter_launcher_icons:\n  android: true\n  ios: false\n  image_path: ".extiro/logo.png"\n' > flutter_launcher_icons.yaml
             dart run flutter_launcher_icons
           fi
-      - run: flutter build apk --release
+      - run: flutter build apk --release --target-platform android-arm,android-arm64
       - uses: actions/upload-artifact@v4
         with:
           name: app-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          compression-level: 0
