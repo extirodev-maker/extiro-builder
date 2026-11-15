@@ -226,7 +226,10 @@ class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
           ),
         ],
       ),
-      body: pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
