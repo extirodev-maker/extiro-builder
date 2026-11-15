@@ -354,7 +354,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> with SingleTick
                     color: const Color(0xFF1E293B),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
+                  },
                   child: Row(
                     children: [
                       const Icon(Icons.event_note_rounded, color: Color(0xFF34D399), size: 30),
