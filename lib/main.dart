@@ -236,7 +236,6 @@ class CalculatorButton extends StatefulWidget {
 class _CalculatorButtonState extends State<CalculatorButton> {
   bool _isPressed = false;
 
-  @testing
   void _setPressed(bool value) {
     setState(() {
       _isPressed = value;
