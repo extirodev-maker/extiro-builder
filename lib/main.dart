@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-void main() => runApp(const CalculatorApp());
+void main() {
+  runApp(const CalculatorApp());
+}
 
 class CalculatorApp extends StatelessWidget {
   const CalculatorApp({super.key});
@@ -10,90 +12,88 @@ class CalculatorApp extends StatelessWidget {
     return MaterialApp(
       title: 'Calculator',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.orange,
         scaffoldBackgroundColor: const Color(0xFF121212),
-        primaryColor: Colors.deepOrange,
       ),
-      home: const CalculatorScreen(),
+      home: const CalculatorHomePage(),
     );
   }
 }
 
-class CalculatorScreen extends StatefulWidget {
-  const CalculatorScreen({super.key});
+class CalculatorHomePage extends StatefulWidget {
+  const CalculatorHomePage({super.key});
 
   @override
-  State<CalculatorScreen> createState() => _CalculatorScreenState();
+  State<CalculatorHomePage> createState() => _CalculatorHomePageState();
 }
 
-class _CalculatorScreenState extends State<CalculatorScreen> {
-  String _output = "0";
-  String _input = "";
+class _CalculatorHomePageState extends State<CalculatorHomePage> {
+  String _output = '0';
+  String _input = '';
   double _num1 = 0;
   double _num2 = 0;
-  String _operand = "";
+  String _operand = '';
 
   void _buttonPressed(String buttonText) {
     setState(() {
-      if (buttonText == "C") {
-        _output = "0";
-        _input = "";
+      if (buttonText == 'C') {
+        _output = '0';
+        _input = '';
         _num1 = 0;
         _num2 = 0;
-        _operand = "";
-      } else if (buttonText == "+" || buttonText == "-" || buttonText == "×" || buttonText == "÷") {
+        _operand = '';
+      } else if (buttonText == '+' || buttonText == '-' || buttonText == '×' || buttonText == '÷') {
         _num1 = double.tryParse(_output) ?? 0;
         _operand = buttonText;
-        _input = "";
-      } else if (buttonText == ".") {
-        if (!_input.contains(".")) {
-          _input += buttonText;
-          _output = _input;
-        }
-      } else if (buttonText == "=") {
+        _input = '';
+      } else if (buttonText == '=') {
         _num2 = double.tryParse(_output) ?? 0;
-        if (_operand == "+") {
+        if (_operand == '+') {
           _output = (_num1 + _num2).toString();
-        } else if (_operand == "-") {
+        } else if (_operand == '-') {
           _output = (_num1 - _num2).toString();
-        } else if (_operand == "×") {
+        } else if (_operand == '×') {
           _output = (_num1 * _num2).toString();
-        } else if (_operand == "÷") {
-          _output = _num2 != 0 ? (_num1 / _num2).toString() : "Error";
+        } else if (_operand == '÷') {
+          _output = _num2 != 0 ? (_num1 / _num2).toString() : 'Error';
         }
-        if (_output.endsWith(".0")) {
+        if (_output.endsWith('.0')) {
           _output = _output.substring(0, _output.length - 2);
         }
-        _operand = "";
-        _input = _output;
+        _operand = '';
+        _input = '';
       } else {
-        if (_output == "0" || _input == _output) {
-          _input = buttonText;
+        if (_output == '0' || _input == '0') {
+          _output = buttonText;
         } else {
-          _input += buttonText;
+          _output = _output + buttonText;
         }
-        _output = _input;
+        _input = _output;
       }
     });
   }
 
-  Widget _buildButton(String buttonText, {Color color = const Color(0xFF1E1E1E), Color textColor = Colors.white}) {
+  Widget _buildButton(String buttonText, Color textColor, Color bgColor) {
     return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(6.0),
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: color,
+            backgroundColor: bgColor,
             foregroundColor: textColor,
-            padding: const EdgeInsets.symmetric(vertical: 22.0),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            padding: const EdgeInsets.all(22.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0),
+            ),
             elevation: 2,
           ),
+          onPressed: () => _buttonPressed(buttonText),
           child: Text(
             buttonText,
-            style: const TextStyle(fontSize: 26.0, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          onPressed: () => _buttonPressed(buttonText),
         ),
       ),
     );
@@ -103,9 +103,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Extiro Calculator', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: const Text('Extiro Calculator'),
+        backgroundColor: const Color(0xFF1F1F1F),
         centerTitle: true,
       ),
       body: Column(
@@ -116,42 +115,49 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Text(
                 _output,
-                style: const TextStyle(fontSize: 64.0, fontWeight: FontWeight.w300, color: Colors.white),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 64,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
-          const Divider(height: 1, color: Colors.white10),
-          Column( 
+          const Divider(height: 1, color: Colors.grey),
+          Column(
             children: [
-              Row(children: [
-                _buildButton("C", color: Colors.redAccent.withOpacity(0.2), textColor: Colors.redAccent),
-                _buildButton("÷", color: Colors.deepOrange, textColor: Colors.white),
-                _buildButton("×", color: Colors.deepOrange, textColor: Colors.white),
-              ]),
-              Row(children: [
-                _buildButton("7"),
-                _buildButton("8"),
-                _buildButton("9"),
-                _buildButton("-", color: Colors.deepOrange, textColor: Colors.white),
-              ]),
-              Row(children: [
-                _buildButton("4"),
-                _buildButton("5"),
-                _buildButton("6"),
-                _buildButton("+", color: Colors.deepOrange, textColor: Colors.white),
-              ]),
-              Row(children: [
-                _buildButton("1"),
-                _buildButton("2"),
-                _buildButton("3"),
-                _buildButton("=", color: Colors.orange, textColor: Colors.white),
-              ]),
-              Row(children: [
-                _buildButton("0"),
-                _buildButton("."),
-              ]),
+              Row(
+                children: [
+                  _buildButton('C', Colors.redAccent, const Color(0xFF2C2C2C)),
+                  _buildButton('÷', Colors.orange, const Color(0xFF2C2C2C)),
+                  _buildButton('×', Colors.orange, const Color(0xFF2C2C2C)),
+                  _buildButton('-', Colors.orange, const Color(0xFF2C2C2C)),
+                ],
+              ),
+              Row(
+                children: [
+                  _buildButton('7', Colors.white, const Color(0xFF333333)),
+                  _buildButton('8', Colors.white, const Color(0xFF333333)),
+                  _buildButton('9', Colors.white, const Color(0xFF333333)),
+                  _buildButton('+', Colors.orange, const Color(0xFF2C2C2C)),
+                ],
+              ),
+              Row(
+                children: [
+                  _buildButton('4', Colors.white, const Color(0xFF333333)),
+                  _buildButton('5', Colors.white, const Color(0xFF333333)),
+                  _buildButton('6', Colors.white, const Color(0xFF333333)),
+                  _buildButton('=', Colors.white, Colors.orange),
+                ],
+              ),
+              Row(
+                children: [
+                  _buildButton('1', Colors.white, const Color(0xFF333333)),
+                  _buildButton('2', Colors.white, const Color(0xFF333333)),
+                  _buildButton('3', Colors.white, const Color(0xFF333333)),
+                  _buildButton('0', Colors.white, const Color(0xFF333333)),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 16),
