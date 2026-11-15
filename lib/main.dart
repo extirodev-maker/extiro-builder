@@ -1,304 +1,253 @@
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  runApp(const RealtimeChatApp());
+  runApp(const HtmlPreviewApp());
 }
 
-class RealtimeChatApp extends StatelessWidget {
-  const RealtimeChatApp({super.key});
+class HtmlPreviewApp extends StatelessWidget {
+  const HtmlPreviewApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Realtime Chat',
+      title: 'HTML Live Preview',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
       ),
-      home: const ChatRoomsScreen(),
+      home: const EditorPreviewScreen(),
     );
   }
 }
 
-class ChatMessage {
-  final String sender;
-  final String text;
-  final String time;
-  final bool isMe;
+class EditorPreviewScreen extends StatefulWidget {
+  const EditorPreviewScreen({super.key});
 
-  ChatMessage({
-    required this.sender,
-    required this.text,
-    required this.time,
-    required this.isMe,
-  });
+  @override
+  State<EditorPreviewScreen> createState() => _EditorPreviewScreenState();
 }
 
-class ChatRoomsScreen extends StatelessWidget {
-  const ChatRoomsScreen({super.key});
+class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
+  int _currentIndex = 0;
+  final TextEditingController _codeController = TextEditingController();
+  late WebViewController _webViewController;
+  bool _isWebViewReady = false;
 
-  final List<Map<String, String>> rooms = const [
-    {'name': 'General Discussion', 'lastMsg': 'Welcome to realtime chat!', 'time': '10:42 AM', 'members': '1,240 online'},
-    {'name': 'Flutter Developers', 'lastMsg': 'Widgets are awesome!', 'time': '09:15 AM', 'members': '542 online'},
-    {'name': 'AI & Tech Talk', 'lastMsg': 'GPT-4o is super fast.', 'time': 'Yesterday', 'members': '890 online'},
-    {'name': 'Random Banter', 'lastMsg': 'Coffee is love ❤️', 'time': 'Yesterday', 'members': '320 online'},
-  ];
+  final String defaultTemplate = '''<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #74b9ff, #a29bfe);
+      color: #2d3436;
+      text-align: center;
+      padding: 50px;
+    }
+    h1 {
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hello HTML Live!</h1>
+    <p>Ye aapka advanced HTML preview app hai.</p>
+    <button onclick="alert('Button clicked successfully!')">Click Me</button>
+  </div>
+</body>
+</html>''';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCode();
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000));
+  }
+
+  Future<void> _loadSavedCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('saved_html_code');
+    setState(() {
+      _codeController.text = saved ?? defaultTemplate;
+    });
+    _updatePreview();
+  }
+
+  Future<void> _saveCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_html_code', _codeController.text);
+  }
+
+  void _updatePreview() {
+    _saveCode();
+    _webViewController.loadHtmlString(_codeController.text);
+  }
+
+  void _loadTemplate(String code) {
+    setState(() {
+      _codeController.text = code;
+    });
+    _updatePreview();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Template loaded successfully!'), duration: Duration(seconds: 1)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Realtime Rooms', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: ListView.builder(
-        itemCount: rooms.length,
-        itemBuilder: (context, index) {
-          final room = rooms[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(12),
-              leading: CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.deepPurple.shade100,
-                child: Text(
-                  room['name']![0],
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple),
-                ),
-              ),
-              title: Text(room['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final List<Widget> pages = [
+      // Page 1: Code Editor with Action Toolbar
+      Column(
+        children: [
+          Container(
+            color: const Color(0xFF1E1E1E),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  const SizedBox(height: 4),
-                  Text(room['lastMsg']!, style: const TextStyle(color: Colors.black54)),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.circle, size: 8, color: Colors.green),
-                      const SizedBox(width: 4),
-                      Text(room['members']!, style: const TextStyle(fontSize: 11, color: Colors.green)),
-                    ],
+                  ActionChip(
+                    label: const Text('Clear'),
+                    avatar: const Icon(Icons.clear, size: 16),
+                    onPressed: () {
+                      setState(() {
+                        _codeController.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  ActionChip(
+                    label: const Text('Reset Template'),
+                    avatar: const Icon(Icons.refresh, size: 16),
+                    onPressed: () => _loadTemplate(defaultTemplate),
+                  ),
+                  const SizedBox(width: 8),
+                  ActionChip(
+                    label: const Text('CSS Card'),
+                    avatar: const Icon(Icons.code, size: 16),
+                    onPressed: () => _loadTemplate('''<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #111; color: #00ffcc; font-family: monospace; padding: 20px; }
+  h2 { border-bottom: 2px solid #00ffcc; padding-bottom: 5px; }
+</style>
+</head>
+<body>
+  <h2>Cyberpunk Style</h2>
+  <p>Live preview is super fast and smooth.</p>
+</body>
+</html>'''),
                   ),
                 ],
               ),
-              trailing: Text(room['time']!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatScreen(roomName: room['name']!),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Create Room feature coming soon!')),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('New Room'),
-      ),
-    );
-  }
-}
-
-class ChatScreen extends StatefulWidget {
-  final String roomName;
-  const ChatScreen({super.key, required this.roomName});
-
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  bool _isTyping = false;
-
-  final List<ChatMessage> _messages = [
-    ChatMessage(sender: 'Aarav', text: 'Hello everyone!', time: '10:30 AM', isMe: false),
-    ChatMessage(sender: 'Priya', text: 'Hey Aarav, welcome!', time: '10:32 AM', isMe: false),
-    ChatMessage(sender: 'You', text: 'Hi all, glad to be here.', time: '10:35 AM', isMe: true),
-  ];
-
-  void _sendMessage() {
-    if (_controller.text.trim().isEmpty) return;
-    
-    final text = _controller.text.trim();
-    _controller.clear();
-
-    setState(() {
-      _messages.add(
-        ChatMessage(sender: 'You', text: text, time: '10:45 AM', isMe: true),
-      );
-      _isTyping = true;
-    });
-
-    _scrollToBottom();
-
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add(
-            ChatMessage(
-              sender: 'Bot / Peer',
-              text: 'Thanks for your message! This is a simulated realtime reply in ${widget.roomName}.',
-              time: '10:46 AM',
-              isMe: false,
-            ),
-          );
-        });
-        _scrollToBottom();
-      }
-    });
-  }
-
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(widget.roomName[0], style: const TextStyle(color: Colors.deepPurple)),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.roomName, style: const TextStyle(fontSize: 16)),
-                const Text('Live Realtime Room', style: TextStyle(fontSize: 11, color: Colors.white70)),
-              ],
-            ),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return Align(
-                  alignment: msg.isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: msg.isMe ? Colors.deepPurple.shade100 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!msg.isMe)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              msg.sender,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepPurple),
-                            ),
-                          ),
-                        Text(
-                          msg.text,
-                          style: const TextStyle(fontSize: 15, color: Colors.black87),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          msg.time,
-                          style: const TextStyle(fontSize: 9, color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
             ),
           ),
-          if (_isTyping)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Someone is typing...',
-                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey.shade600),
+          Expanded(
+            child: Container(
+              color: const Color(0xFF121212),
+              padding: const EdgeInsets.all(12.0),
+              child: TextField(
+                controller: _codeController,
+                maxLines: null,
+                expands: true,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                  color: Colors.greenAccent,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Enter your HTML / CSS / JS code here...',
+                  hintStyle: TextStyle(color: Colors.grey),
                 ),
               ),
-            ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Type realtime message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: Colors.deepPurple,
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                    onPressed: _sendMessage,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
       ),
-    );
+
+      // Page 2: Live Preview WebView
+      Column(
+        children: [
+          Container(
+            color: Colors.grey[900],
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Live Output Preview', style: TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.blueAccent),
+                  onPressed: _updatePreview,
+                  tooltip: 'Refresh Preview',
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: WebViewWidget(controller: _webViewController),
+          ),
+        ],
+      ),
+    ];
+
+    return Scaffold({
+      appBar: AppBar(
+        title: const Text('HTML Live Preview Pro'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.play_arrow, color: Colors.greenAccent, size: 30),
+            tooltip: 'Run & Preview',
+            onPressed: () {
+              _updatePreview();
+              setState(() {
+                _currentIndex = 1;
+              });
+            },
+          ),
+        ],
+      ),
+      body: pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          if (index == 1) {
+            _updatePreview();
+          }
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.edit_note),
+            label: 'HTML Code',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.remove_red_eye),
+            label: 'Run Preview',
+          ),
+        ],
+      ),
+    });
   }
 }

@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      APP_NAME: "Offline Chat App"
-      APP_PKG: "com.extiro.offlinechatapp"
+      APP_NAME: "Html Live Preview App"
+      APP_PKG: "com.extiro.htmllivepreviewapp"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
