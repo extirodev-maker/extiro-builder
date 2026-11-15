@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      APP_NAME: "calculator"
-      APP_PKG: "com.extiro.calculator"
+      APP_NAME: "calendar"
+      APP_PKG: "com.extiro.calendar"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
