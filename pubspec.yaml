@@ -1,22 +1,19 @@
-name: calendar_3d
-description: A gorgeous 3D Calendar app with interactive cards, event notes, and stunning UI.
+name: calculator_3d
+description: A 3D style calculator app built with Flutter.
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=2.18.0 <3.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  intl: ^0.19.0
-  flutter_animate: ^4.5.0
-  shared_preferences: ^2.2.3
+  math_expressions: ^2.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true

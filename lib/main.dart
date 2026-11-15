@@ -1,396 +1,298 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:math_expressions/math_expressions.dart';
 
 void main() {
-  runApp(const Calendar3DApp());
+  runApp(const Calculator3DApp());
 }
 
-class Calendar3DApp extends StatelessWidget {
-  const Calendar3DApp({super.key});
+class Calculator3DApp extends StatelessWidget {
+  const Calculator3DApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '3D Calendar',
+      title: '3D Calculator',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        fontFamily: 'sans-serif',
+        scaffoldBackgroundColor: const Color(0xFF1E1E2C),
       ),
-      home: const CalendarHomeScreen(),
+      home: const CalculatorScreen(),
     );
   }
 }
 
-class CalendarHomeScreen extends StatefulWidget {
-  const CalendarHomeScreen({super.key});
+class CalculatorScreen extends StatefulWidget {
+  const CalculatorScreen({Key? key}) : super(key: key);
 
   @override
-  State<CalendarHomeScreen> createState() => _CalendarHomeScreenState();
+  State<CalculatorScreen> createState() => _CalculatorScreenState();
 }
 
-class _CalendarHomeScreenState extends State<CalendarHomeScreen> with SingleTickerProviderStateMixin {
-  DateTime _focusedDate = DateTime.now();
-  DateTime? _selectedDate;
-  Map<String, String> _events = {};
-  late AnimationController _controller;
-  double _dragValue = 0.0;
+class _CalculatorScreenState extends State<CalculatorScreen> {
+  String _input = '';
+  String _output = '0';
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedDate = _focusedDate;
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..forward();
-    _loadEvents();
+  void _onButtonPressed(String value) {
+    setState(() {
+      if (value == 'C') {
+        _input = '';
+        _output = '0';
+      } else if (value == '⌫') {
+        if (_input.isNotEmpty) {
+          _input = _input.substring(0, _input.length - 1);
+        }
+        if (_input.isEmpty) {
+          _output = '0';
+        }
+      } else if (value == '=') {
+        _calculateResult();
+      } else {
+        if (_input == '0' && value != '.') {
+          _input = value;
+        } else {
+          _input += value;
+        }
+      }
+    });
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  void _calculateResult() {
+    if (_input.isEmpty) return;
 
-  Future<void> _loadEvents() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? eventsString = prefs.getString('calendar_events');
-    if (eventsString != null) {
-      setState(() {
-        _events = Map<String, String>.from(json.decode(eventsString));
-      });
+    String finalExpression = _input;
+    // Replace symbols for evaluation
+    finalExpression = finalExpression.replaceAll('×', '*');
+    finalExpression = finalExpression.replaceAll('÷', '/');
+
+    try {
+      Parser p = Parser();
+      Expression exp = p.parse(finalExpression);
+      ContextModel cm = ContextModel();
+      double eval = exp.evaluate(EvaluationType.REAL, cm);
+      
+      // Format output to remove trailing .0 if integer
+      if (eval == eval.toInt().toDouble()) {
+        _output = eval.toInt().toString();
+      } else {
+        _output = eval.toString();
+      }
+    } catch (e) {
+      _output = 'Error';
     }
-  }
-
-  Future<void> _saveEvents() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('calendar_events', json.encode(_events));
-  }
-
-  String _dateKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  void _showEventDialog(DateTime date) {
-    final key = _dateKey(date);
-    final controller = TextEditingController(text: _events[key] ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Event on ${DateFormat('MMM dd, yyyy').format(date)}',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Enter event notes here...',
-            hintStyle: const TextStyle(color: Colors.white54),
-            filled: true,
-            fillColor: const Color(0xFF0F172A),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              setState(() {
-                if (controller.text.trim().isEmpty) {
-                  _events.remove(key);
-                } else {
-                  _events[key] = controller.text.trim();
-                }
-              });
-              _saveEvents();
-              Navigator.pop(context);
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final daysInMonth = DateTime(_focusedDate.year, _focusedDate.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(_focusedDate.year, _focusedDate.month, 1);
-    final int startingWeekday = firstDayOfMonth.weekday % 7;
-
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.calendar_month_rounded, color: Color(0xFF818CF8), size: 28),
-            const SizedBox(width: 10),
-            Text(
-              DateFormat('MMMM yyyy').format(_focusedDate),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF232526),
+              Color(0xFF414345),
+            ],
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.today, color: Color(0xFF818CF8)),
-            onPressed: () {
-              setState(() {
-                _focusedDate = DateTime.now();
-                _selectedDate = _focusedDate;
-              });
-            },
-          ),
-        ],
-      ),
-      body: GestureDetector(
-        onHorizontalDragUpdate: (details) {
-          _dragValue += details.delta.dx;
-        },
-        onHorizontalDragEnd: (details) {
-          if (_dragValue > 50) {
-            setState(() {
-              _focusedDate = DateTime(_focusedDate.year, _focusedDate.month - 1, 1);
-            });
-          } else if (_dragValue < -50) {
-            setState(() {
-              _focusedDate = DateTime(_focusedDate.year, _focusedDate.month + 1, 1);
-            });
-          }
-          _dragValue = 0.0;
-        },
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E1B4B)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
+        child: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 10),
-              // Weekday headers
+              // App Bar Title
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                      .map((day) => SizedBox(
-                            width: 40,
-                            child: Text(
-                              day,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              // 3D Calendar Grid Card
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Transform(
-                      transform: Matrix4.identity()
-                        ..setEntry(3, 2, 0.001)
-                        ..rotateX(0.05),
-                      alignment: Alignment.center,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B).withOpacity(0.85),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.5),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                            const BoxShadow(
-                              color: Color(0xFF6366F1),
-                              blurRadius: 1,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
-                            width: 1.5,
-                          ),
-                        },
-                        child: GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 42,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 7,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                          ),
-                          itemBuilder: (context, index) {
-                            final dayIndex = index - startingWeekday + 1;
-                            if (dayIndex <= 0 || dayIndex > daysInMonth) {
-                              return const SizedBox.shrink();
-                            }
-                            final currentDate = DateTime(_focusedDate.year, _focusedDate.month, dayIndex);
-                            final isToday = currentDate.year == DateTime.now().year &&
-                                currentDate.month == DateTime.now().month &&
-                                currentDate.day == DateTime.now().day;
-                            final isSelected = _selectedDate != null &&
-                                currentDate.year == _selectedDate!.year &&
-                                currentDate.month == _selectedDate!.month &&
-                                currentDate.day == _selectedDate!.day;
-                            final hasEvent = _events.containsKey(_dateKey(currentDate));
-
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedDate = currentDate;
-                                });
-                              },
-                              onDoubleTap: () {
-                                _showEventDialog(currentDate);
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFF6366F1)
-                                      : isToday
-                                          ? const Color(0xFF4F46E5).withOpacity(0.4)
-                                          : const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: isSelected
-                                      ? [
-                                          BoxShadow(
-                                            color: const Color(0xFF6366F1).withOpacity(0.6),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
-                                          )
-                                        ]
-                                      : [],
-                                  border: Border.all(
-                                    color: isToday ? const Color(0xFF818CF8) : Colors.transparent,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Center(
-                                      child: Text(
-                                        '$dayIndex',
-                                        style: TextStyle(
-                                          color: isSelected ? Colors.white : Colors.white70,
-                                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    if (hasEvent)
-                                      Positioned(
-                                        bottom: 4,
-                                        right: 0,
-                                        left: 0,
-                                        child: Center(
-                                          child: Container(
-                                            width: 5,
-                                            height: 5,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFF34D399),
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: Text(
+                  '3D CALCULATOR',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
                   ),
                 ),
               ),
-              // Selected Date Details & Event Banner
-              if (_selectedDate != null) 
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  padding: const EdgeInsets.all(16),
+              // Display Screen
+              Expanded(
+                flex: 2,
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  },
-                  child: Row(
-                    children: [
-                      const Icon(Icons.event_note_rounded, color: Color(0xFF34D399), size: 30),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              DateFormat('EEEE, MMM dd, yyyy').format(_selectedDate!),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _events[_dateKey(_selectedDate!)] ?? 'Double tap date above to add event note',
-                              style: TextStyle(
-                                color: _events.containsKey(_dateKey(_selectedDate!)) ? Colors.white70 : Colors.white38,
-                                fontSize: 13,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
+                    color: const Color(0xFF1A1A24),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black54,
+                        offset: Offset(-5, -5),
+                        blurRadius: 15,
+                        spreadRadius: 1,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Color(0xFF818CF8)),
-                        onPressed: () => _showEventDialog(_selectedDate!),
+                      BoxShadow(
+                        color: Color(0x33FFFFFF),
+                        offset: Offset(5, 5),
+                        blurRadius: 15,
+                        spreadRadius: 1,
                       ),
                     ],
                   ),
-                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+                  alignment: Alignment.bottomRight,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: true,
+                        child: Text(
+                          _input,
+                          style: const TextStyle(
+                            fontSize: 28,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: true,
+                        child: Text(
+                          _output,
+                          style: const TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.cyanAccent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Keypad
+              Expanded(
+                flex: 5,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Column(
+                    children: [
+                      _buildRow(['C', '(', ')', '÷'], [Colors.redAccent, Colors.blueGrey, Colors.blueGrey, Colors.orangeAccent]),
+                      const SizedBox(height: 12),
+                      _buildRow(['7', '8', '9', '×'], [Colors.white70, Colors.white70, Colors.white70, Colors.orangeAccent]),
+                      const SizedBox(height: 12),
+                      _buildRow(['4', '5', '6', '-'], [Colors.white70, Colors.white70, Colors.white70, Colors.orangeAccent]),
+                      const SizedBox(height: 12),
+                      _buildRow(['1', '2', '3', '+'], [Colors.white70, Colors.white70, Colors.white70, Colors.orangeAccent]),
+                      const SizedBox(height: 12),
+                      _buildRow(['⌫', '0', '.', '='], [Colors.blueGrey, Colors.white70, Colors.white70, Colors.greenAccent]),
+                    ],
+                  ),
+                ),
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRow(List<String> labels, List<Color> colors) {
+    return Expanded(
+      child: Row(
+        children: List.generate(labels.length, (index) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6.0),
+              child: CalculatorButton(
+                label: labels[index],
+                textColor: colors[index],
+                onPressed: () => _onButtonPressed(labels[index]),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class CalculatorButton extends StatefulWidget {
+  final String label;
+  final Color textColor;
+  final VoidCallback onPressed;
+
+  const CalculatorButton({
+    Key? key,
+    required this.label,
+    required this.textColor,
+    required this.onPressed,
+  }) : super(key: key);
+
+  @override
+  State<CalculatorButton> createState() => _CalculatorButtonState();
+}
+
+class _CalculatorButtonState extends State<CalculatorButton> {
+  bool _isPressed = false;
+
+  @testing
+  void _setPressed(bool value) {
+    setState(() {
+      _isPressed = value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onPressed();
+      },
+      onTapCancel: () {
+        setState(() => _isPressed = false);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2B36),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: _isPressed
+              ? const [
+                  BoxShadow(
+                    color: Colors.black45,
+                    offset: Offset(1, 1),
+                    blurRadius: 2,
+                    spreadRadius: 0,
+                  ),
+                ]
+              : const [
+                  BoxShadow(
+                    color: Colors.black54,
+                    offset: Offset(-4, -4),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                  BoxShadow(
+                    color: Color(0x22FFFFFF),
+                    offset: Offset(4, 4),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+        ),
+        child: Center(
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: widget.textColor,
+            ),
           ),
         ),
       ),
