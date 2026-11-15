@@ -37,7 +37,6 @@ class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
   int _currentIndex = 0;
   final TextEditingController _codeController = TextEditingController();
   late WebViewController _webViewController;
-  bool _isWebViewReady = false;
 
   final String defaultTemplate = '''<!DOCTYPE html>
 <html>
@@ -210,7 +209,7 @@ class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
       ),
     ];
 
-    return Scaffold({
+    return Scaffold(
       appBar: AppBar(
         title: const Text('HTML Live Preview Pro'),
         actions: [
@@ -248,6 +247,6 @@ class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
           ),
         ],
       ),
-    });
+    );
   }
 }
