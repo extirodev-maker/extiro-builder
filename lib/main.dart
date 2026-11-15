@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 
 void main() {
   runApp(const SongPlayerApp());
@@ -232,7 +231,7 @@ class _PlayerHomePageState extends State<PlayerHomePage> {
                     children: [
                       IconButton(
                         iconSize: 36,
-                        icon: const Icon(LucideIcons.skip_back),
+                        icon: const Icon(Icons.skip_previous),
                         onPressed: _prevSong,
                       ),
                       const SizedBox(width: 24),
@@ -242,14 +241,14 @@ class _PlayerHomePageState extends State<PlayerHomePage> {
                         child: IconButton(
                           iconSize: 36,
                           color: Theme.of(context).colorScheme.onPrimary,
-                          icon: Icon(_isPlaying ? LucideIcons.pause : LucideIcons.play),
+                          icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
                           onPressed: _togglePlayPause,
                         ),
                       ),
                       const SizedBox(width: 24),
                       IconButton(
                         iconSize: 36,
-                        icon: const Icon(LucideIcons.skip_forward),
+                        icon: const Icon(Icons.skip_next),
                         onPressed: _nextSong,
                       ),
                     ],
