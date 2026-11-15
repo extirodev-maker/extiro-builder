@@ -104,6 +104,7 @@ class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
       _codeController.text = code;
     });
     _updatePreview();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Template loaded successfully!'), duration: Duration(seconds: 1)),
     );
