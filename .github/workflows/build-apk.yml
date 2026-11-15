@@ -1,55 +1,28 @@
-name: Build Flutter APK
+name: Build APK
 on:
+  push:
   workflow_dispatch:
-    inputs:
-      project_zip_key:
-        required: true
-      build_id:
-        required: true
-      app_name:
-        default: 'app'
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           cache: true
-
-      - name: Download project ZIP
-        env:
-          PUBLIC_URL: ${{ secrets.UPSTASH_PUBLIC_URL }}
+      - run: flutter create . --platforms=android --project-name extiro_app --org com.extiro
+      - name: Add INTERNET permission if missing
         run: |
-          curl -L "$PUBLIC_URL/${{ inputs.project_zip_key }}" -o project.zip
-          unzip -q project.zip -d project
-
-      - name: Build APK
-        working-directory: project
-        run: flutter build apk --release
-
-      - name: Upload APK to Upstash
-        env:
-          UPSTASH_BLOB_TOKEN: ${{ secrets.UPSTASH_BLOB_TOKEN }}
-          BUILD_ID: ${{ inputs.build_id }}
-          APP_NAME: ${{ inputs.app_name }}
-        run: |
-          npm init -y >/dev/null 2>&1
-          npm install @upstash/blob >/dev/null 2>&1
-          cat > upload.mjs << 'EOF'
-          import { Bucket } from '@upstash/blob';
-          import { readFile } from 'fs/promises';
-          const bucket = Bucket.fromEnv();
-          const apk = await readFile('project/build/app/outputs/flutter-apk/app-release.apk');
-          const key = `apks/${process.env.APP_NAME}-${process.env.BUILD_ID}.apk`;
-          await bucket.put(key, apk);
-          console.log('Uploaded to:', key);
-          EOF
-          node upload.mjs
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q "android.permission.INTERNET" $M || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $M
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
