@@ -1,5 +1,5 @@
-name: html_live_preview_app
-description: An advanced HTML CSS JS live preview editor app.
+name: song_player
+description: A beautiful song player app
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  webview_flutter: ^4.4.2
-  shared_preferences: ^2.2.2
+  audioplayers: ^6.0.0
+  flutter_lucide: ^0.0.7
 
 dev_dependencies:
   flutter_test:

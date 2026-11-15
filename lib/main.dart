@@ -1,253 +1,262 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 
 void main() {
-  runApp(const HtmlPreviewApp());
+  runApp(const SongPlayerApp());
 }
 
-class HtmlPreviewApp extends StatelessWidget {
-  const HtmlPreviewApp({super.key});
+class SongPlayerApp extends StatelessWidget {
+  const SongPlayerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HTML Live Preview',
+      title: 'Song Player',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
           brightness: Brightness.dark,
         ),
-        useMaterial3: true,
       ),
-      home: const EditorPreviewScreen(),
+      home: const PlayerHomePage(),
     );
   }
 }
 
-class EditorPreviewScreen extends StatefulWidget {
-  const EditorPreviewScreen({super.key});
+class Song {
+  final String title;
+  final String artist;
+  final String albumArt;
+  final String url;
 
-  @override
-  State<EditorPreviewScreen> createState() => _EditorPreviewScreenState();
+  Song({
+    required this.title,
+    required this.artist,
+    required this.albumArt,
+    required this.url,
+  });
 }
 
-class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
-  int _currentIndex = 0;
-  final TextEditingController _codeController = TextEditingController();
-  late WebViewController _webViewController;
+class PlayerHomePage extends StatefulWidget {
+  const PlayerHomePage({super.key});
 
-  final String defaultTemplate = '''<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #74b9ff, #a29bfe);
-      color: #2d3436;
-      text-align: center;
-      padding: 50px;
-    }
-    h1 {
-      color: #fff;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      display: inline-block;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Hello HTML Live!</h1>
-    <p>Ye aapka advanced HTML preview app hai.</p>
-    <button onclick="alert('Button clicked successfully!')">Click Me</button>
-  </div>
-</body>
-</html>''';
+  @override
+  State<PlayerHomePage> createState() => _PlayerHomePageState();
+}
+
+class _PlayerHomePageState extends State<PlayerHomePage> {
+  late AudioPlayer _audioPlayer;
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+  int _currentIndex = 0;
+
+  final List<Song> _songs = [
+    Song(
+      title: 'Acoustic Breeze',
+      artist: 'Bensound',
+      albumArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
+      url: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
+    ),
+    Song(
+      title: 'Sunny',
+      artist: 'Bensound',
+      albumArt: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500',
+      url: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
+    ),
+    Song(
+      title: 'Creative Minds',
+      artist: 'Bensound',
+      albumArt: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500',
+      url: 'https://www.bensound.com/bensound-music/bensound-creativeminds.mp3',
+    ),
+    Song(
+      title: 'Ukulele',
+      artist: 'Bensound',
+      albumArt: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=500',
+      url: 'https://www.bensound.com/bensound-music/bensound-ukulele.mp3',
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadSavedCode();
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000));
-  }
+    _audioPlayer = AudioPlayer();
 
-  Future<void> _loadSavedCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('saved_html_code');
-    setState(() {
-      _codeController.text = saved ?? defaultTemplate;
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      setState(() {
+        _isPlaying = state == PlayerState.playing;
+      });
     });
-    _updatePreview();
-  }
 
-  Future<void> _saveCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_html_code', _codeController.text);
-  }
-
-  void _updatePreview() {
-    _saveCode();
-    _webViewController.loadHtmlString(_codeController.text);
-  }
-
-  void _loadTemplate(String code) {
-    setState(() {
-      _codeController.text = code;
+    _audioPlayer.onDurationChanged.listen((newDuration) {
+      setState(() {
+        _duration = newDuration;
+      });
     });
-    _updatePreview();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Template loaded successfully!'), duration: Duration(seconds: 1)),
-    );
+
+    _audioPlayer.onPositionChanged.listen((newPosition) {
+      setState(() {
+        _position = newPosition;
+      });
+    });
+
+    _playCurrentSong();
+  }
+
+  Future<void> _playCurrentSong() async {
+    Source urlSource = UrlSource(_songs[_currentIndex].url);
+    await _audioPlayer.play(urlSource);
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+    } else {
+      await _audioPlayer.resume();
+    }
+  }
+
+  void _nextSong() {
+    setState(() {
+      _currentIndex = (_currentIndex + 1) % _songs.length;
+    });
+    _playCurrentSong();
+  }
+
+  void _prevSong() {
+    setState(() {
+      _currentIndex = (_currentIndex - 1 + _songs.length) % _songs.length;
+    });
+    _playCurrentSong();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  } 
+
+  String _formatTime(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return duration.inHours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      // Page 1: Code Editor with Action Toolbar
-      Column(
+    final song = _songs[_currentIndex];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Music Player'),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: Column(
         children: [
-          Container(
-            color: const Color(0xFF1E1E1E),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.network(
+                    song.albumArt,
+                    height: 280,
+                    width: 280,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ActionChip(
-                    label: const Text('Clear'),
-                    avatar: const Icon(Icons.clear, size: 16),
-                    onPressed: () {
-                      setState(() {
-                        _codeController.clear();
-                      });
+                  Text(
+                    song.title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    song.artist,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Slider(
+                    min: 0,
+                    max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                    value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0),
+                    onChanged: (value) async {
+                      final position = Duration(seconds: value.toInt());
+                      await _audioPlayer.seek(position);
                     },
                   ),
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('Reset Template'),
-                    avatar: const Icon(Icons.refresh, size: 16),
-                    onPressed: () => _loadTemplate(defaultTemplate),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(_formatTime(_position)),
+                        Text(_formatTime(_duration)),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    label: const Text('CSS Card'),
-                    avatar: const Icon(Icons.code, size: 16),
-                    onPressed: () => _loadTemplate('''<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body { background: #111; color: #00ffcc; font-family: monospace; padding: 20px; }
-  h2 { border-bottom: 2px solid #00ffcc; padding-bottom: 5px; }
-</style>
-</head>
-<body>
-  <h2>Cyberpunk Style</h2>
-  <p>Live preview is super fast and smooth.</p>
-</body>
-</html>'''),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        iconSize: 36,
+                        icon: const Icon(LucideIcons.skip_back),
+                        onPressed: _prevSong,
+                      ),
+                      const SizedBox(width: 24),
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: IconButton(
+                          iconSize: 36,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          icon: Icon(_isPlaying ? LucideIcons.pause : LucideIcons.play),
+                          onPressed: _togglePlayPause,
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      IconButton(
+                        iconSize: 36,
+                        icon: const Icon(LucideIcons.skip_forward),
+                        onPressed: _nextSong,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-          Expanded(
-            child: Container(
-              color: const Color(0xFF121212),
-              padding: const EdgeInsets.all(12.0),
-              child: TextField(
-                controller: _codeController,
-                maxLines: null,
-                expands: true,
-                keyboardType: TextInputType.multiline,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 14,
-                  color: Colors.greenAccent,
-                ),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Enter your HTML / CSS / JS code here...',
-                  hintStyle: TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      // Page 2: Live Preview WebView
-      Column(
-        children: [
-          Container(
-            color: Colors.grey[900],
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Live Output Preview', style: TextStyle(fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.blueAccent),
-                  onPressed: _updatePreview,
-                  tooltip: 'Refresh Preview',
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: WebViewWidget(controller: _webViewController),
-          ),
-        ],
-      ),
-    ];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('HTML Live Preview Pro'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.play_arrow, color: Colors.greenAccent, size: 30),
-            tooltip: 'Run & Preview',
-            onPressed: () {
-              _updatePreview();
-              setState(() {
-                _currentIndex = 1;
-              });
-            },
-          ),
-        ],
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == 1) {
-            _updatePreview();
-          }
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note),
-            label: 'HTML Code',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.remove_red_eye),
-            label: 'Run Preview',
           ),
         ],
       ),
