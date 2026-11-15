@@ -1,5 +1,5 @@
-name: relaxing_fuljhadiya
-description: A relaxing app with automatic fireworks and glowing sparklers.
+name: offline_chat_app
+description: A simple offline chat app in Flutter.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,13 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_lucide: ^1.72.0
-  audioplayers: ^6.0.0
+  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
