@@ -170,7 +170,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> with SingleTick
             },
           ),
         ],
-      },
+      ),
       body: GestureDetector(
         onHorizontalDragUpdate: (details) {
           _dragValue += details.delta.dx;
