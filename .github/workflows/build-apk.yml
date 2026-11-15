@@ -23,31 +23,33 @@ jobs:
         with:
           channel: 'stable'
           cache: true
-      - name: Download project
+
+      - name: Download project ZIP
+        env:
+          PUBLIC_URL: ${{ secrets.UPSTASH_PUBLIC_URL }}
         run: |
-          curl -L "${{ secrets.R2_PUBLIC_URL }}/${{ inputs.project_zip_key }}" -o project.zip
+          curl -L "$PUBLIC_URL/${{ inputs.project_zip_key }}" -o project.zip
           unzip -q project.zip -d project
+
       - name: Build APK
         working-directory: project
         run: flutter build apk --release
-      - name: Upload APK to R2
-        working-directory: project
+
+      - name: Upload APK to Upstash
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY }}
-          R2_SECRET_KEY: ${{ secrets.R2_SECRET_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          UPSTASH_BLOB_TOKEN: ${{ secrets.UPSTASH_BLOB_TOKEN }}
           BUILD_ID: ${{ inputs.build_id }}
           APP_NAME: ${{ inputs.app_name }}
         run: |
-          curl https://rclone.org/install.sh | sudo bash
-          mkdir -p ~/.config/rclone
-          cat > ~/.config/rclone/rclone.conf <<EOF
-          [r2]
-          type = s3
-          provider = Cloudflare
-          access_key_id = $R2_ACCESS_KEY
-          secret_access_key = $R2_SECRET_KEY
-          endpoint = https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com
+          npm init -y >/dev/null 2>&1
+          npm install @upstash/blob >/dev/null 2>&1
+          cat > upload.mjs << 'EOF'
+          import { Bucket } from '@upstash/blob';
+          import { readFile } from 'fs/promises';
+          const bucket = Bucket.fromEnv();
+          const apk = await readFile('project/build/app/outputs/flutter-apk/app-release.apk');
+          const key = `apks/${process.env.APP_NAME}-${process.env.BUILD_ID}.apk`;
+          await bucket.put(key, apk);
+          console.log('Uploaded to:', key);
           EOF
-          rclone copy build/app/outputs/flutter-apk/app-release.apk r2:$R2_BUCKET/apks/${APP_NAME}-${BUILD_ID}.apk
+          node upload.mjs
