@@ -1,4 +1,3 @@
-import 'package:flutter/material.ani.dart' if (dart.library.html) 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -251,7 +250,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> with SingleTick
                             color: Colors.white.withOpacity(0.1),
                             width: 1.5,
                           ),
-                        ),
+                        },
                         child: GridView.builder(
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: 42,
@@ -347,7 +346,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> with SingleTick
                 ),
               ),
               // Selected Date Details & Event Banner
-              if (_selectedDate != null) ...[
+              if (_selectedDate != null) 
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   padding: const EdgeInsets.all(16),
@@ -391,7 +390,6 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> with SingleTick
                     ],
                   ),
                 ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
-              ],
             ],
           ),
         ),
