@@ -5,7 +5,7 @@ void main() {
 }
 
 class CalculatorApp extends StatelessWidget {
-  const CalculatorApp({Key? key}) : super(key: key);
+  const CalculatorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,8 +14,8 @@ class CalculatorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        primarySwatch: Colors.orange,
-        scaffoldBackgroundColor: const Color(0xFF171821),
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        primarySwatch: Colors.deepOrange,
       ),
       home: const CalculatorScreen(),
     );
@@ -23,7 +23,7 @@ class CalculatorApp extends StatelessWidget {
 }
 
 class CalculatorScreen extends StatefulWidget {
-  const CalculatorScreen({Key? key}) : super(key: key);
+  const CalculatorScreen({super.key});
 
   @override
   State<CalculatorScreen> createState() => _CalculatorScreenState();
@@ -31,80 +31,88 @@ class CalculatorScreen extends StatefulWidget {
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
   String _output = '0';
-  String _input = '';
-  String _operand = '';
+  String _currentExpression = '';
   double _num1 = 0;
   double _num2 = 0;
-  bool _isResultShown = false;
+  String _operand = '';
+  bool _isNewOperand = true;
 
   void _buttonPressed(String buttonText) {
     setState(() {
-      if (buttonText == 'AC') {
+      if (buttonText == 'C') {
         _output = '0';
-        _input = '';
-        _operand = '';
+        _currentExpression = '';
         _num1 = 0;
         _num2 = 0;
-        _isResultShown = false;
+        _operand = '';
+        _isNewOperand = true;
       } else if (buttonText == '⌫') {
-        if (_input.isNotEmpty) {
-          _input = _input.substring(0, _input.length - 1);
-          if (_input.isEmpty) {
+        if (_output.isNotEmpty && _output != '0') {
+          _output = _output.substring(0, _output.length - 1);
+          if (_output.isEmpty || _output == '-') {
             _output = '0';
-          } else {
-            _output = _input;
+            _isNewOperand = true;
           }
         }
-      } else if (buttonText == '+' ||
-          buttonText == '-' ||
-          buttonText == '×' ||
-          buttonText == '÷') {
-        if (_input.isNotEmpty) {
-          _num1 = double.parse(_input);
-          _operand = buttonText;
-          _input = '';
+      } else if (buttonText == '+' || buttonText == '-' || buttonText == '×' || buttonText == '÷') {
+        _num1 = double.tryParse(_output) ?? 0;
+        _operand = buttonText;
+        _currentExpression = '$_num1 $_operand ';
+        _isNewOperand = true;
+      } else if (buttonText == '.') {
+        if (_isNewOperand) {
+          _output = '0.';
+          _isNewOperand = false;
+        } else if (!_output.contains('.')) {
+          _output = '$_output.';
         }
       } else if (buttonText == '%') {
-        if (_input.isNotEmpty) {
-          _num1 = double.parse(_input);
-          _output = (_num1 / 100).toString();
-          _input = _output;
-        }
-      } else if (buttonText == '.') {
-        if (!_input.contains('.')) {
-          _input += buttonText;
-          _output = _input;
+        double val = double.tryParse(_output) ?? 0;
+        val = val / 100;
+        _output = val.toString();
+        if (_output.endsWith('.0')) {
+          _output = _output.substring(0, _output.length - 2);
         }
       } else if (buttonText == '=') {
-        if (_input.isNotEmpty && _operand.isNotEmpty) {
-          _num2 = double.parse(_input);
-          if (_operand == '+') {
-            _output = (_num1 + _num2).toString();
-          } else if (_operand == '-') {
-            _output = (_num1 - _num2).toString();
-          } else if (_operand == '×') {
-            _output = (_num1 * _num2).toString();
-          } else if (_operand == '÷') {
-            _output = _num2 != 0 ? (_num1 / _num2).toString() : 'Error';
+        _num2 = double.tryParse(_output) ?? 0;
+        double result = 0;
+
+        if (_operand == '+') {
+          result = _num1 + _num2;
+        } else if (_operand == '-') {
+          result = _num1 - _num2;
+        } else if (_operand == '×') {
+          result = _num1 * _num2;
+        } else if (_operand == '÷') {
+          if (_num2 == 0) {
+            _output = 'Error';
+            _currentExpression = '';
+            _isNewOperand = true;
+            return;
+          } else {
+            result = _num1 / _num2;
           }
-          
-          // Remove trailing .0 for clean integer outputs
-          if (_output.endsWith('.0')) {
-            _output = _output.substring(0, _output.length - 2);
-          }
-          
-          _input = _output;
-          _operand = '';
-          _isResultShown = true;
         }
+
+        String resStr = result.toString();
+        if (resStr.endsWith('.0')) {
+          resStr = resStr.substring(0, resStr.length - 2);
+        }
+        _currentExpression = '$_num1 $_operand $_num2 =';
+        _output = resStr;
+        _isNewOperand = true;
       } else {
-        if (_isResultShown) {
-          _input = buttonText;
-          _isResultShown = false;
+        // Numbers
+        if (_isNewOperand) {
+          _output = buttonText;
+          _isNewOperand = false;
         } else {
-          _input += buttonText;
+          if (_output == '0') {
+            _output = buttonText;
+          } else {
+            _output += buttonText;
+          }
         }
-        _output = _input;
       }
     });
   }
@@ -112,16 +120,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget _buildButton(String text, {Color? textColor, Color? bgColor}) {
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(6.0),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.all(22.0),
-            backgroundColor: bgColor ?? const Color(0xFF21222D),
+            padding: const EdgeInsets.symmetric(vertical: 22),
+            backgroundColor: bgColor ?? const Color(0xFF1E1E1E),
             foregroundColor: textColor ?? Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
+              borderRadius: BorderRadius.circular(16),
             ),
-            elevation: 0,
+            elevation: 2,
           ),
           onPressed: () => _buttonPressed(text),
           child: Text(
@@ -137,43 +145,57 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calculator'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: const Text('Extiro Calculator', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF1E1E1E),
         centerTitle: true,
       ),
       body: Column(
         children: [
+          // Display Area
           Expanded(
             child: Container(
+              padding: const EdgeInsets.all(24),
               alignment: Alignment.bottomRight,
-              padding: const EdgeInsets.all(24.0),
-              child: Text(
-                _output,
-                style: const TextStyle(
-                  fontSize: 64,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                maxLines: 1,
-                textAlign: TextAlign.right,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _currentExpression,
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
+                    child: Text(
+                      _output,
+                      style: const TextStyle(
+                        fontSize: 52,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          // Keypad Area
           Container(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(12),
             decoration: const BoxDecoration(
-              color: Color(0xFF1E1E29),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+              color: Color(0xFF181818),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               children: [
                 Row(
                   children: [
-                    _buildButton('AC', textColor: Colors.redAccent, bgColor: const Color(0xFF2A2B36)),
-                    _buildButton('%', textColor: Colors.amber, bgColor: const Color(0xFF2A2B36)),
-                    _buildButton('⌫', textColor: Colors.amber, bgColor: const Color(0xFF2A2B36)),
-                    _buildButton('÷', textColor: Colors.orange, bgColor: const Color(0xFF2A2B36)),
+                    _buildButton('C', textColor: Colors.redAccent, bgColor: const Color(0xFF2C2C2C)),
+                    _buildButton('⌫', textColor: Colors.orangeAccent, bgColor: const Color(0xFF2C2C2C)),
+                    _buildButton('%', textColor: Colors.orangeAccent, bgColor: const Color(0xFF2C2C2C)),
+                    _buildButton('÷', textColor: Colors.deepOrange, bgColor: const Color(0xFF2C2C2C)),
                   ],
                 ),
                 Row(
@@ -181,7 +203,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                     _buildButton('7'),
                     _buildButton('8'),
                     _buildButton('9'),
-                    _buildButton('×', textColor: Colors.orange, bgColor: const Color(0xFF2A2B36)),
+                    _buildButton('×', textColor: Colors.deepOrange, bgColor: const Color(0xFF2C2C2C)),
                   ],
                 ),
                 Row(
@@ -189,7 +211,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                     _buildButton('4'),
                     _buildButton('5'),
                     _buildButton('6'),
-                    _buildButton('-', textColor: Colors.orange, bgColor: const Color(0xFF2A2B36)),
+                    _buildButton('-', textColor: Colors.deepOrange, bgColor: const Color(0xFF2C2C2C)),
                   ],
                 ),
                 Row(
@@ -197,14 +219,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                     _buildButton('1'),
                     _buildButton('2'),
                     _buildButton('3'),
-                    _buildButton('+', textColor: Colors.orange, bgColor: const Color(0xFF2A2B36)),
+                    _buildButton('+', textColor: Colors.deepOrange, bgColor: const Color(0xFF2C2C2C)),
                   ],
-                },
+                ),
                 Row(
                   children: [
                     _buildButton('0'),
                     _buildButton('.'),
-                    _buildButton('=', textColor: Colors.white, bgColor: Colors.orange),
+                    _buildButton('=', textColor: Colors.white, bgColor: Colors.deepOrange),
                   ],
                 ),
               ],
