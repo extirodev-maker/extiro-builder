@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_lucide: ^0.2.0
+  flutter_lucide: ^1.72.0
   audioplayers: ^6.0.0
 
 dev_dependencies:
