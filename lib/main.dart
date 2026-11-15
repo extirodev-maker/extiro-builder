@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-void main() {
-  runApp(const CalculatorApp());
-}
+void main() => runApp(const CalculatorApp());
 
 class CalculatorApp extends StatelessWidget {
-  const CalculatorApp({Key? key}) : super(key: key);
+  const CalculatorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Extiro Calculator',
+      title: 'Calculator',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
+      theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF121212),
+        primaryColor: Colors.deepOrange,
       ),
       home: const CalculatorScreen(),
     );
@@ -23,101 +20,80 @@ class CalculatorApp extends StatelessWidget {
 }
 
 class CalculatorScreen extends StatefulWidget {
-  const CalculatorScreen({Key? key}) : super(key: key);
+  const CalculatorScreen({super.key});
 
   @override
   State<CalculatorScreen> createState() => _CalculatorScreenState();
 }
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
-  String _output = '0';
-  String _currentNumber = '';
-  String _operand = '';
+  String _output = "0";
+  String _input = "";
   double _num1 = 0;
   double _num2 = 0;
-  bool _isFinished = false;
+  String _operand = "";
 
   void _buttonPressed(String buttonText) {
     setState(() {
-      if (buttonText == 'AC') {
-        _output = '0';
-        _currentNumber = '';
-        _operand = '';
+      if (buttonText == "C") {
+        _output = "0";
+        _input = "";
         _num1 = 0;
         _num2 = 0;
-        _isFinished = false;
-      } else if (buttonText == '⌫') {
-        if (_currentNumber.isNotEmpty) {
-          _currentNumber = _currentNumber.substring(0, _currentNumber.length - 1);
-          _output = _currentNumber.isEmpty ? '0' : _currentNumber;
+        _operand = "";
+      } else if (buttonText == "+" || buttonText == "-" || buttonText == "×" || buttonText == "÷") {
+        _num1 = double.tryParse(_output) ?? 0;
+        _operand = buttonText;
+        _input = "";
+      } else if (buttonText == ".") {
+        if (!_input.contains(".")) {
+          _input += buttonText;
+          _output = _input;
         }
-      } else if (buttonText == '+' || buttonText == '-' || buttonText == '×' || buttonText == '÷') {
-        if (_currentNumber.isNotEmpty) {
-          _num1 = double.parse(_currentNumber);
-          _operand = buttonText;
-          _currentNumber = '';
-        } else if (_output != '0') {
-          _num1 = double.parse(_output);
-          _operand = buttonText;
+      } else if (buttonText == "=") {
+        _num2 = double.tryParse(_output) ?? 0;
+        if (_operand == "+") {
+          _output = (_num1 + _num2).toString();
+        } else if (_operand == "-") {
+          _output = (_num1 - _num2).toString();
+        } else if (_operand == "×") {
+          _output = (_num1 * _num2).toString();
+        } else if (_operand == "÷") {
+          _output = _num2 != 0 ? (_num1 / _num2).toString() : "Error";
         }
-      } else if (buttonText == '.') {
-        if (!_currentNumber.contains('.')) {
-          _currentNumber += '.';
-          _output = _currentNumber;
+        if (_output.endsWith(".0")) {
+          _output = _output.substring(0, _output.length - 2);
         }
-      } else if (buttonText == '=') {
-        if (_operand.isNotEmpty && _currentNumber.isNotEmpty) {
-          _num2 = double.parse(_currentNumber);
-          if (_operand == '+') {
-            _output = (_num1 + _num2).toString();
-          } else if (_operand == '-') {
-            _output = (_num1 - _num2).toString();
-          } else if (_operand == '×') {
-            _output = (_num1 * _num2).toString();
-          } else if (_operand == '÷') {
-            _output = _num2 == 0 ? 'Error' : (_num1 / _num2).toString();
-          }
-          // Clean up trailing .0
-          if (_output.endsWith('.0')) {
-            _output = _output.substring(0, _output.length - 2);
-          }
-          _currentNumber = _output;
-          _operand = '';
-          _isFinished = true;
-        }
+        _operand = "";
+        _input = _output;
       } else {
-        if (_isFinished) {
-          _currentNumber = '';
-          _isFinished = false;
+        if (_output == "0" || _input == _output) {
+          _input = buttonText;
+        } else {
+          _input += buttonText;
         }
-        _currentNumber += buttonText;
-        _output = _currentNumber;
+        _output = _input;
       }
     });
   }
 
-  Widget _buildButton(String text, {Color? textColor, Color? bgColor}) {
+  Widget _buildButton(String buttonText, {Color color = const Color(0xFF1E1E1E), Color textColor = Colors.white}) {
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(6.0),
+      child: Container(
+        margin: const EdgeInsets.all(6.0),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: bgColor ?? const Color(0xFF1E1E1E),
-            foregroundColor: textColor ?? Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 22),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            backgroundColor: color,
+            foregroundColor: textColor,
+            padding: const EdgeInsets.symmetric(vertical: 22.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
             elevation: 2,
           ),
-          onPressed: () => _buttonPressed(text),
           child: Text(
-            text,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w500,
-            ),
+            buttonText,
+            style: const TextStyle(fontSize: 26.0, fontWeight: FontWeight.bold),
           ),
+          onPressed: () => _buttonPressed(buttonText),
         ),
       ),
     );
@@ -127,92 +103,59 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('Extiro Calculator', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          'Extiro Calculator',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[400],
-          ),
-        ),
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              flex: 2,
-              child: Container(
-                alignment: Alignment.bottomRight,
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  reverse: true,
-                  child: Text(
-                    _output,
-                    style: GoogleFonts.poppins(
-                      fontSize: 64,
-                      fontWeight: FontWeight.w300,
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                  ),
-                ),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: Container(
+              alignment: Alignment.bottomRight,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Text(
+                _output,
+                style: const TextStyle(fontSize: 64.0, fontWeight: FontWeight.w300, color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Divider(color: Color(0xFF2C2C2C), height: 1),
-            Expanded(
-              flex: 4,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        _buildButton('AC', textColor: const Color(0xFFFF6B6B), bgColor: const Color(0xFF2C1E1E)),
-                        _buildButton('⌫', textColor: const Color(0xFFFFB703), bgColor: const Color(0xFF2C2516)),
-                        _buildButton('%', textColor: const Color(0xFF4CC9F0), bgColor: const Color(0xFF16232C)),
-                        _buildButton('÷', textColor: const Color(0xFF4CC9F0), bgColor: const Color(0xFF16232C)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _buildButton('7'),
-                        _buildButton('8'),
-                        _buildButton('9'),
-                        _buildButton('×', textColor: const Color(0xFF4CC9F0), bgColor: const Color(0xFF16232C)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _buildButton('4'),
-                        _buildButton('5'),
-                        _buildButton('6'),
-                        _buildButton('-', textColor: const Color(0xFF4CC9F0), bgColor: const Color(0xFF16232C)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _buildButton('1'),
-                        _buildButton('2'),
-                        _buildButton('3'),
-                        _buildButton('+', textColor: const Color(0xFF4CC9F0), bgColor: const Color(0xFF16232C)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _buildButton('0'),
-                        _buildButton('.'),
-                        _buildButton('=', textColor: Colors.white, bgColor: const Color(0xFF4361EE)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const Divider(height: 1, color: Colors.white10),
+          Column( 
+            children: [
+              Row(children: [
+                _buildButton("C", color: Colors.redAccent.withOpacity(0.2), textColor: Colors.redAccent),
+                _buildButton("÷", color: Colors.deepOrange, textColor: Colors.white),
+                _buildButton("×", color: Colors.deepOrange, textColor: Colors.white),
+              ]),
+              Row(children: [
+                _buildButton("7"),
+                _buildButton("8"),
+                _buildButton("9"),
+                _buildButton("-", color: Colors.deepOrange, textColor: Colors.white),
+              ]),
+              Row(children: [
+                _buildButton("4"),
+                _buildButton("5"),
+                _buildButton("6"),
+                _buildButton("+", color: Colors.deepOrange, textColor: Colors.white),
+              ]),
+              Row(children: [
+                _buildButton("1"),
+                _buildButton("2"),
+                _buildButton("3"),
+                _buildButton("=", color: Colors.orange, textColor: Colors.white),
+              ]),
+              Row(children: [
+                _buildButton("0"),
+                _buildButton("."),
+              ]),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
