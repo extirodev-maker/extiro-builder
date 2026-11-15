@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      APP_NAME: "Calculator 3d"
-      APP_PKG: "com.extiro.calculator3d"
+      APP_NAME: "Relaxing Fuljhadiya"
+      APP_PKG: "com.extiro.relaxingfuljhadiya"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

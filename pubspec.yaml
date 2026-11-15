@@ -1,15 +1,15 @@
-name: calculator_3d
-description: A 3D style calculator app built with Flutter.
+name: relaxing_fuljhadiya
+description: A relaxing app with automatic fireworks and sparkling lights.
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.18.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  math_expressions: ^2.2.0
+  canvas_animated_loading_dots: ^1.0.8
 
 dev_dependencies:
   flutter_test:
