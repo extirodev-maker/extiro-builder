@@ -107,8 +107,6 @@ class _TapMagicHomePageState extends State<TapMagicHomePage> with TickerProvider
               child: ConfettiWidget(
                 confettiController: _confettiController,
                 blastDirection: pi / 2,
-                maxBlastSpeed: 25,
-                minBlastSpeed: 10,
                 emissionFrequency: 0.05,
                 numberOfParticles: 30,
                 gravity: 0.2,
