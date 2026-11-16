@@ -1,254 +1,268 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'dart:ui';
+import 'package:confetti/confetti.dart';
 
-void main() {
-  runApp(const FuturisticTodoApp());
-}
+void main() => runApp(const TapMagicApp());
 
-class FuturisticTodoApp extends StatelessWidget {
-  const FuturisticTodoApp({super.key});
+class TapMagicApp extends StatelessWidget {
+  const TapMagicApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nexus Todo',
+      title: 'Tap Magic',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
         useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A0E21),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00E5FF),
-          secondary: Color(0xFF7C4DFF),
-          surface: Color(0xFF1D1E33),
-        ),
       ),
-      home: const TodoHomeScreen(),
+      home: const TapMagicHomePage(),
     );
   }
 }
 
-class Task {
-  String title;
-  String category;
-  bool isCompleted;
-  Task({required this.title, required this.category, this.isCompleted = false});
+class TapAnimationItem {
+  final Offset position;
+  final int type;
+  final Color color;
+  TapAnimationItem({required this.position, required this.type, required this.color});
 }
 
-class TodoHomeScreen extends StatefulWidget {
-  const TodoHomeScreen({super.key});
+class TapMagicHomePage extends StatefulWidget {
+  const TapMagicHomePage({super.key});
 
   @override
-  State<TodoHomeScreen> createState() => _TodoHomeScreenState();
+  State<TapMagicHomePage> createState() => _TapMagicHomePageState();
 }
 
-class _TodoHomeScreenState extends State<TodoHomeScreen> {
-  final List<Task> _tasks = [
-    Task(title: 'Quantum Core Update', category: 'Dev', isCompleted: true),
-    Task(title: 'Neural Network Sync', category: 'AI'),
-    Task(title: 'Cyber Security Patch', category: 'Work'),
+class _TapMagicHomePageState extends State<TapMagicHomePage> with TickerProviderStateMixin {
+  final List<TapAnimationItem> _taps = [];
+  final Random _random = Random();
+  late ConfettiController _confettiController;
+  int _tapCount = 0;
+  String _currentEffectName = 'Tap Anywhere!';
+
+  final List<String> _effectNames = [
+    'Ripple Wave',
+    'Star Burst',
+    'Floating Hearts',
+    'Color Explosion',
+    'Confetti Blast'
   ];
 
-  final TextEditingController _controller = TextEditingController();
-  String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Dev', 'AI', 'Work', 'Personal'];
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+  }
 
-  void _addTask() {
-    if (_controller.text.isNotEmpty) {
-      setState(() {
-        _tasks.add(Task(
-          title: _controller.text,
-          category: _selectedCategory == 'All' ? 'Personal' : _selectedCategory,
-        ));
-        _controller.clear();
-      });
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  void _handleTap(TapDownDetails details) {
+    final position = details.localPosition;
+    final type = _random.nextInt(5);
+    final color = Color.fromRGBO(
+      _random.nextInt(200) + 55,
+      _random.nextInt(200) + 55,
+      _random.nextInt(200) + 55,
+      1,
+    );
+
+    setState(() {
+      _tapCount++;
+      _currentEffectName = _effectNames[type];
+      _taps.add(TapAnimationItem(position: position, type: type, color: color));
+      if (_taps.length > 15) {
+        _taps.removeAt(0);
+      }
+    });
+
+    if (type == 4) {
+      _confettiController.play();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredTasks = _selectedCategory == 'All'
-        ? _tasks
-        : _tasks.where((t) => t.category == _selectedCategory).toList();
-
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0A0E21),
-              Color(0xFF1D1E33),
-              Color(0xFF0F2027),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: _handleTap,
+        child: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E1B4B), Color(0xFF311042)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: pi / 2,
+                maxBlastSpeed: 25,
+                minBlastSpeed: 10,
+                emissionFrequency: 0.05,
+                numberOfParticles: 30,
+                gravity: 0.2,
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'NEXUS TASK',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                            color: Color(0xFF00E5FF),
-                          ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '✨ Tap Magic',
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'System Operational',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          child: Text(
+                            'Taps: $_tapCount',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1D1E33),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: const Color(0xFF00E5FF).withOpacity(0.3)),
+                    const Spacer(),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.touch_app, size: 60, color: Colors.white.withOpacity(0.6)),
+                          const SizedBox(height: 16),
+                          Text(
+                            _currentEffectName,
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.pinkAccent.shade100),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Screen par kahi bhi tap karein aur magic dekhein!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: Colors.white70),
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.fingerprint, color: Color(0xFF00E5FF), size: 28),
                     ),
+                    const Spacer(),
                   ],
                 ),
-                const SizedBox(height: 25),
-                // Input Field
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1D1E33).withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF7C4DFF).withOpacity(0.5)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            hintText: 'Enter new protocol...',
-                            hintStyle: TextStyle(color: Colors.white38),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.bolt, color: Color(0xFF00E5FF)),
-                        onPressed: _addTask,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Categories
-                SizedBox(
-                  height: 40,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = _categories[index];
-                      final isSelected = _selectedCategory == cat;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: ChoiceChip(
-                          label: Text(cat),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedCategory = cat;
-                            });
-                          },
-                          selectedColor: const Color(0xFF00E5FF),
-                          backgroundColor: const Color(0xFF1D1E33),
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.black : Colors.white70,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'ACTIVE PROTOCOLS',
-                  style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 1.5),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: filteredTasks.isEmpty
-                      ? const Center(
-                          child: Text('No protocols found', style: TextStyle(color: Colors.white38)),
-                        )
-                      : ListView.builder(
-                          itemCount: filteredTasks.length,
-                          itemBuilder: (context, index) {
-                            final task = filteredTasks[index];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1D1E33).withOpacity(0.4),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: task.isCompleted
-                                      ? Colors.greenAccent.withOpacity(0.3)
-                                      : const Color(0xFF00E5FF).withOpacity(0.2),
-                                ),
-                              ),
-                              child: ListTile(
-                                leading: Checkbox(
-                                  value: task.isCompleted,
-                                  activeColor: const Color(0xFF00E5FF),
-                                  checkColor: Colors.black,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      task.isCompleted = val ?? false;
-                                    });
-                                  },
-                                ),
-                                title: Text(
-                                  task.title,
-                                  style: TextStyle(
-                                    color: task.isCompleted ? Colors.white38 : Colors.white,
-                                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  task.category,
-                                  style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 12),
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                                  onPressed: () {
-                                    setState(() {
-                                      _tasks.remove(task);
-                                    });
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+              ),
             ),
-          ),
+            ..._taps.map((item) => Positioned(
+                  left: item.position.dx - 50,
+                  top: item.position.dy - 50,
+                  child: IgnorePointer(
+                    child: CustomAnimationWidget(type: item.type, color: item.color),
+                  ),
+                )),
+          ],
         ),
       ),
     );
+  }
+}
+
+class CustomAnimationWidget extends StatefulWidget {
+  final int type;
+  final Color color;
+  const CustomAnimationWidget({super.key, required this.type, required this.color});
+
+  @override
+  State<CustomAnimationWidget> createState() => _CustomAnimationWidgetState();
+}
+
+class _CustomAnimationWidgetState extends State<CustomAnimationWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.2, end: 1.8).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacityAnimation.value,
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: SizedBox(
+              width: 100,
+              height: 100,
+              child: Center(child: _buildEffectContent()),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEffectContent() {
+    switch (widget.type) {
+      case 0:
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: widget.color, width: 3),
+          ),
+        );
+      case 1:
+        return Icon(Icons.star, color: widget.color, size: 50);
+      case 2:
+        return Icon(Icons.favorite, color: widget.color, size: 45);
+      case 3:
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.color.withOpacity(0.4),
+            boxShadow: [
+              BoxShadow(color: widget.color, blurRadius: 15, spreadRadius: 5),
+            ],
+          ),
+        );
+      case 4:
+      default:
+        return Icon(Icons.bolt, color: widget.color, size: 50);
+    }
   }
 }
