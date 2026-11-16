@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      APP_NAME: "Song Player"
-      APP_PKG: "com.extiro.songplayer"
+      APP_NAME: "CyberTask AI"
+      APP_PKG: "com.extiro.cybertaskai"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

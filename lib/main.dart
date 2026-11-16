@@ -1,263 +1,253 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'dart:ui';
 
 void main() {
-  runApp(const SongPlayerApp());
+  runApp(const FuturisticTodoApp());
 }
 
-class SongPlayerApp extends StatelessWidget {
-  const SongPlayerApp({super.key});
+class FuturisticTodoApp extends StatelessWidget {
+  const FuturisticTodoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Song Player',
+      title: 'Nexus Todo',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
+      theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0A0E21),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF00E5FF),
+          secondary: Color(0xFF7C4DFF),
+          surface: Color(0xFF1D1E33),
         ),
       ),
-      home: const PlayerHomePage(),
+      home: const TodoHomeScreen(),
     );
   }
 }
 
-class Song {
-  final String title;
-  final String artist;
-  final String albumArt;
-  final String url;
-
-  Song({
-    required this.title,
-    required this.artist,
-    required this.albumArt,
-    required this.url,
-  });
+class Task {
+  String title;
+  String category;
+  bool isCompleted;
+  Task({required this.title, required this.category, this.isCompleted = false});
 }
 
-class PlayerHomePage extends StatefulWidget {
-  const PlayerHomePage({super.key});
+class TodoHomeScreen extends StatefulWidget {
+  const TodoHomeScreen({super.key});
 
   @override
-  State<PlayerHomePage> createState() => _PlayerHomePageState();
+  State<TodoHomeScreen> createState() => _TodoHomeScreenState();
 }
 
-class _PlayerHomePageState extends State<PlayerHomePage> {
-  late AudioPlayer _audioPlayer;
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-  int _currentIndex = 0;
-
-  final List<Song> _songs = [
-    Song(
-      title: 'Acoustic Breeze',
-      artist: 'Bensound',
-      albumArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500',
-      url: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
-    ),
-    Song(
-      title: 'Sunny',
-      artist: 'Bensound',
-      albumArt: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500',
-      url: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
-    ),
-    Song(
-      title: 'Creative Minds',
-      artist: 'Bensound',
-      albumArt: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500',
-      url: 'https://www.bensound.com/bensound-music/bensound-creativeminds.mp3',
-    ),
-    Song(
-      title: 'Ukulele',
-      artist: 'Bensound',
-      albumArt: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=500',
-      url: 'https://www.bensound.com/bensound-music/bensound-ukulele.mp3',
-    ),
+class _TodoHomeScreenState extends State<TodoHomeScreen> {
+  final List<Task> _tasks = [
+    Task(title: 'Quantum Core Update', category: 'Dev', isCompleted: true),
+    Task(title: 'Neural Network Sync', category: 'AI'),
+    Task(title: 'Cyber Security Patch', category: 'Work'),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _audioPlayer = AudioPlayer();
+  final TextEditingController _controller = TextEditingController();
+  String _selectedCategory = 'All';
+  final List<String> _categories = ['All', 'Dev', 'AI', 'Work', 'Personal'];
 
-    _audioPlayer.onPlayerStateChanged.listen((state) {
+  void _addTask() {
+    if (_controller.text.isNotEmpty) {
       setState(() {
-        _isPlaying = state == PlayerState.playing;
+        _tasks.add(Task(
+          title: _controller.text,
+          category: _selectedCategory == 'All' ? 'Personal' : _selectedCategory,
+        ));
+        _controller.clear();
       });
-    });
-
-    _audioPlayer.onDurationChanged.listen((newDuration) {
-      setState(() {
-        _duration = newDuration;
-      });
-    });
-
-    _audioPlayer.onPositionChanged.listen((newPosition) {
-      setState(() {
-        _position = newPosition;
-      });
-    });
-
-    _playCurrentSong();
-  }
-
-  Future<void> _playCurrentSong() async {
-    Source urlSource = UrlSource(_songs[_currentIndex].url);
-    await _audioPlayer.play(urlSource);
-  }
-
-  Future<void> _togglePlayPause() async {
-    if (_isPlaying) {
-      await _audioPlayer.pause();
-    } else {
-      await _audioPlayer.resume();
     }
-  }
-
-  void _nextSong() {
-    setState(() {
-      _currentIndex = (_currentIndex + 1) % _songs.length;
-    });
-    _playCurrentSong();
-  }
-
-  void _prevSong() {
-    setState(() {
-      _currentIndex = (_currentIndex - 1 + _songs.length) % _songs.length;
-    });
-    _playCurrentSong();
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  } 
-
-  String _formatTime(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return duration.inHours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   @override
   Widget build(BuildContext context) {
-    final song = _songs[_currentIndex];
+    final filteredTasks = _selectedCategory == 'All'
+        ? _tasks
+        : _tasks.where((t) => t.category == _selectedCategory).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Music Player'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 5,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Image.network(
-                    song.albumArt,
-                    height: 280,
-                    width: 280,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0A0E21),
+              Color(0xFF1D1E33),
+              Color(0xFF0F2027),
+            ],
           ),
-          Expanded(
-            flex: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    song.title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    song.artist,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Slider(
-                    min: 0,
-                    max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
-                    value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0),
-                    onChanged: (value) async {
-                      final position = Duration(seconds: value.toInt());
-                      await _audioPlayer.seek(position);
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(_formatTime(_position)),
-                        Text(_formatTime(_duration)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'NEXUS TASK',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                            color: Color(0xFF00E5FF),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'System Operational',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        iconSize: 36,
-                        icon: const Icon(Icons.skip_previous),
-                        onPressed: _prevSong,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1D1E33),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: const Color(0xFF00E5FF).withOpacity(0.3)),
                       ),
-                      const SizedBox(width: 24),
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: IconButton(
-                          iconSize: 36,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-                          onPressed: _togglePlayPause,
+                      child: const Icon(Icons.fingerprint, color: Color(0xFF00E5FF), size: 28),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 25),
+                // Input Field
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1D1E33).withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF7C4DFF).withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            hintText: 'Enter new protocol...',
+                            hintStyle: TextStyle(color: Colors.white38),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 24),
                       IconButton(
-                        iconSize: 36,
-                        icon: const Icon(Icons.skip_next),
-                        onPressed: _nextSong,
+                        icon: const Icon(Icons.bolt, color: Color(0xFF00E5FF)),
+                        onPressed: _addTask,
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                // Categories
+                SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final cat = _categories[index];
+                      final isSelected = _selectedCategory == cat;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: ChoiceChip(
+                          label: Text(cat),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedCategory = cat;
+                            });
+                          },
+                          selectedColor: const Color(0xFF00E5FF),
+                          backgroundColor: const Color(0xFF1D1E33),
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.black : Colors.white70,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'ACTIVE PROTOCOLS',
+                  style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 1.5),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: filteredTasks.isEmpty
+                      ? const Center(
+                          child: Text('No protocols found', style: TextStyle(color: Colors.white38)),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredTasks.length,
+                          itemBuilder: (context, index) {
+                            final task = filteredTasks[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1D1E33).withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: task.isCompleted
+                                      ? Colors.greenAccent.withOpacity(0.3)
+                                      : const Color(0xFF00E5FF).withOpacity(0.2),
+                                ),
+                              ),
+                              child: ListTile(
+                                leading: Checkbox(
+                                  value: task.isCompleted,
+                                  activeColor: const Color(0xFF00E5FF),
+                                  checkColor: Colors.black,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      task.isCompleted = val ?? false;
+                                    });
+                                  },
+                                ),
+                                title: Text(
+                                  task.title,
+                                  style: TextStyle(
+                                    color: task.isCompleted ? Colors.white38 : Colors.white,
+                                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  task.category,
+                                  style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 12),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                  onPressed: () {
+                                    setState(() {
+                                      _tasks.remove(task);
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
