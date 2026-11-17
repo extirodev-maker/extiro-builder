@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      APP_NAME: "Magic Tap"
-      APP_PKG: "com.extiro.magictap"
+      APP_NAME: "SmartCalc"
+      APP_PKG: "com.extiro.smartcalc"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

@@ -1,265 +1,299 @@
-import 'dart:math';
+import 'extiro_watermark.dart';
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-void main() => runApp(const TapMagicApp());
+void main() {
+  runApp(ExtiroWatermark(child: const SmartCalcApp()));
+}
 
-class TapMagicApp extends StatelessWidget {
-  const TapMagicApp({super.key});
+class SmartCalcApp extends StatelessWidget {
+  const SmartCalcApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tap Magic',
+      title: 'SmartCalc',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF6366F1),
+          secondary: Color(0xFFEC4899),
+          surface: Color(0xFF1E293B),
+        ),
+        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       ),
-      home: const TapMagicHomePage(),
+      home: const CalculatorScreen(),
     );
   }
 }
 
-class TapAnimationItem {
-  final Offset position;
-  final int type;
-  final Color color;
-  TapAnimationItem({required this.position, required this.type, required this.color});
-}
-
-class TapMagicHomePage extends StatefulWidget {
-  const TapMagicHomePage({super.key});
+class CalculatorScreen extends StatefulWidget {
+  const CalculatorScreen({super.key});
 
   @override
-  State<TapMagicHomePage> createState() => _TapMagicHomePageState();
+  State<CalculatorScreen> createState() => _CalculatorScreenState();
 }
 
-class _TapMagicHomePageState extends State<TapMagicHomePage> with TickerProviderStateMixin {
-  final List<TapAnimationItem> _taps = [];
-  final Random _random = Random();
-  late ConfettiController _confettiController;
-  int _tapCount = 0;
-  String _currentEffectName = 'Tap Anywhere!';
-
-  final List<String> _effectNames = [
-    'Ripple Wave',
-    'Star Burst',
-    'Floating Hearts',
-    'Color Explosion',
-    'Confetti Blast'
-  ];
+class _CalculatorScreenState extends State<CalculatorScreen> {
+  String _output = '0';
+  String _expression = '';
+  double _num1 = 0;
+  double _num2 = 0;
+  String _operand = '';
+  bool _isNewOp = false;
+  List<String> _history = [];
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+    _loadHistory();
   }
 
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    super.dispose();
-  }
-
-  void _handleTap(TapDownDetails details) {
-    final position = details.localPosition;
-    final type = _random.nextInt(5);
-    final color = Color.fromRGBO(
-      _random.nextInt(200) + 55,
-      _random.nextInt(200) + 55,
-      _random.nextInt(200) + 55,
-      1,
-    );
-
+  _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _tapCount++;
-      _currentEffectName = _effectNames[type];
-      _taps.add(TapAnimationItem(position: position, type: type, color: color));
-      if (_taps.length > 15) {
-        _taps.removeAt(0);
+      _history = prefs.getStringList('calc_history') ?? [];
+    });
+  }
+
+  _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('calc_history', _history);
+  }
+
+  void _buttonPressed(String buttonText) {
+    setState(() {
+      if (buttonText == 'AC') {
+        _output = '0';
+        _expression = '';
+        _num1 = 0;
+        _num2 = 0;
+        _operand = '';
+      } else if (buttonText == '⌫') {
+        if (_output.length > 1) {
+          _output = _output.substring(0, _output.length - 1);
+        } else {
+          _output = '0';
+        }
+      } else if (buttonText == '+' || buttonText == '-' || buttonText == '×' || buttonText == '÷') {
+        _num1 = double.tryParse(_output) ?? 0;
+        _operand = buttonText;
+        _expression = '$_output $_operand';
+        _isNewOp = true;
+      } else if (buttonText == '.') {
+        if (_isNewOp) {
+          _output = '0.';
+          _isNewOp = false;
+        } else if (!_output.contains('.')) {
+          _output = _output + '.';
+        }
+      } else if (buttonText == '=') {
+        _num2 = double.tryParse(_output) ?? 0;
+        double result = 0;
+        if (_operand == '+') result = _num1 + _num2;
+        if (_operand == '-') result = _num1 - _num2;
+        if (_operand == '×') result = _num1 * _num2;
+        if (_operand == '÷') {
+          if (_num2 == 0) {
+            _output = 'Error';
+            return;
+          }
+          result = _num1 / _num2;
+        }
+        String resStr = (result == result.toInt()) ? result.toInt().toString() : result.toStringAsFixed(4);
+        String histItem = '$_expression $_num2 = $resStr';
+        _history.insert(0, histItem);
+        if (_history.length > 20) _history.removeLast();
+        _saveHistory();
+
+        _expression = '';
+        _output = resStr;
+        _isNewOp = true;
+      } else {
+        if (_output == '0' || _isNewOp) {
+          _output = buttonText;
+          _isNewOp = false;
+        } else {
+          _output = _output + buttonText;
+        }
       }
     });
-
-    if (type == 4) {
-      _confettiController.play();
-    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: _handleTap,
-        child: Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E1B4B), Color(0xFF311042)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+  Widget _buildButton(String text, {Color? color, Color? textColor}) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 22),
+            backgroundColor: color ?? const Color(1, 1, 1, 0.05), // fallback handled
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 0,
+          ),
+          onPressed: () => _buttonPressed(text),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: textColor ?? Colors.white,
             ),
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirection: pi / 2,
-                emissionFrequency: 0.05,
-                numberOfParticles: 30,
-                gravity: 0.2,
-              ),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '✨ Tap Magic',
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
-                          ),
-                          child: Text(
-                            'Taps: $_tapCount',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.touch_app, size: 60, color: Colors.white.withOpacity(0.6)),
-                          const SizedBox(height: 16),
-                          Text(
-                            _currentEffectName,
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.pinkAccent.shade100),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Screen par kahi bhi tap karein aur magic dekhein!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 14, color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                  ],
-                ),
-              ),
-            ),
-            ..._taps.map((item) => Positioned(
-                  left: item.position.dx - 50,
-                  top: item.position.dy - 50,
-                  child: IgnorePointer(
-                    child: CustomAnimationWidget(type: item.type, color: item.color),
-                  ),
-                )),
-          ],
+          ),
         ),
       ),
     );
   }
-}
 
-class CustomAnimationWidget extends StatefulWidget {
-  final int type;
-  final Color color;
-  const CustomAnimationWidget({super.key, required this.type, required this.color});
-
-  @override
-  State<CustomAnimationWidget> createState() => _CustomAnimationWidgetState();
-}
-
-class _CustomAnimationWidgetState extends State<CustomAnimationWidget> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _scaleAnimation = Tween<double>(begin: 0.2, end: 1.8).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _opacityAnimation.value,
-          child: Transform.scale(
-            scale: _scaleAnimation.value,
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: Center(child: _buildEffectContent()),
-            ),
+  void _showHistoryModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(1, 1, 1, 0.05), // fallback
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Calculation History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    onPressed: () {
+                      setState(() {
+                        _history.clear();
+                        _saveHistory();
+                      });
+                      Navigator.pop(context);
+                    },
+                  )
+                ],
+              ),
+              const Divider(color: Colors.white24),
+              Expanded(
+                child: _history.isEmpty
+                    ? const Center(child: Text('No history yet', style: TextStyle(color: Colors.white54)))
+                    : ListView.builder(
+                        itemCount: _history.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(_history[index], style: const TextStyle(fontSize: 18, color: Colors.white70)),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildEffectContent() {
-    switch (widget.type) {
-      case 0:
-        return Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: widget.color, width: 3),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('SmartCalc', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _showHistoryModal,
           ),
-        );
-      case 1:
-        return Icon(Icons.star, color: widget.color, size: 50);
-      case 2:
-        return Icon(Icons.favorite, color: widget.color, size: 45);
-      case 3:
-        return Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.color.withOpacity(0.4),
-            boxShadow: [
-              BoxShadow(color: widget.color, blurRadius: 15, spreadRadius: 5),
-            ],
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              alignment: Alignment.bottomRight,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _expression,
+                    style: const TextStyle(fontSize: 20, color: Colors.white54),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
+                    child: Text(
+                      _output,
+                      style: const TextStyle(fontSize: 56, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        );
-      case 4:
-      default:
-        return Icon(Icons.bolt, color: widget.color, size: 50);
-    }
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF162032),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _buildButton('AC', color: const Color(0xFFEF4444).withOpacity(0.2), textColor: const Color(0xFFEF4444)),
+                    _buildButton('⌫', color: const Color(0xFF334155), textColor: Colors.amber),
+                    _buildButton('%', color: const Color(0xFF334155), textColor: Colors.amber),
+                    _buildButton('÷', color: const Color(0xFF6366F1), textColor: Colors.white),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildButton('7', color: const Color(0xFF1E293B)),
+                    _buildButton('8', color: const Color(0xFF1E293B)),
+                    _buildButton('9', color: const Color(0xFF1E293B)),
+                    _buildButton('×', color: const Color(0xFF6366F1), textColor: Colors.white),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildButton('4', color: const Color(0xFF1E293B)),
+                    _buildButton('5', color: const Color(0xFF1E293B)),
+                    _buildButton('6', color: const Color(0xFF1E293B)),
+                    _buildButton('-', color: const Color(0xFF6366F1), textColor: Colors.white),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildButton('1', color: const Color(0xFF1E293B)),
+                    _buildButton('2', color: const Color(0xFF1E293B)),
+                    _buildButton('3', color: const Color(0xFF1E293B)),
+                    _buildButton('+', color: const Color(0xFF6366F1), textColor: Colors.white),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildButton('00', color: const Color(0xFF1E293B)),
+                    _buildButton('0', color: const Color(0xFF1E293B)),
+                    _buildButton('.', color: const Color(0xFF1E293B)),
+                    _buildButton('=', color: const Color(0xFFEC4899), textColor: Colors.white),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
