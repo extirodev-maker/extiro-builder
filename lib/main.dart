@@ -2,7 +2,6 @@ import 'extiro_watermark.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 void main() {
   runApp(ExtiroWatermark(child: const SmartCalcApp()));
@@ -132,7 +131,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 22),
-            backgroundColor: color ?? const Color(1, 1, 1, 0.05), // fallback handled
+            backgroundColor: color ?? const Color(0xFF1E293B),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             elevation: 0,
           ),
@@ -153,7 +152,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   void _showHistoryModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(1, 1, 1, 0.05), // fallback
+      backgroundColor: const Color(0xFF1E293B),
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(20),
@@ -251,7 +250,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               children: [
                 Row(
                   children: [
-                    _buildButton('AC', color: const Color(0xFFEF4444).withOpacity(0.2), textColor: const Color(0xFFEF4444)),
+                    _buildButton('AC', color: const Color(0xFFEF4444), textColor: Colors.white),
                     _buildButton('⌫', color: const Color(0xFF334155), textColor: Colors.amber),
                     _buildButton('%', color: const Color(0xFF334155), textColor: Colors.amber),
                     _buildButton('÷', color: const Color(0xFF6366F1), textColor: Colors.white),
